@@ -1,0 +1,430 @@
+-- // 🧱 Oak Planks 🔥 by SkyeMoz + ZynixMoz (patched full)
+-- FULL version: custom top/bottom/sides textures, sounds, tool icon, click delete fix
+-- GUI: black glass buttons with icon textures + 2s hold protection
+-- Notification removed
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+
+local player = Players.LocalPlayer
+local camera = workspace.CurrentCamera
+local PlayerGui = player:WaitForChild("PlayerGui")
+
+-- TOOL SETUP --
+local tool = Instance.new("Tool")
+tool.Name = "Block Placer"
+tool.RequiresHandle = false
+tool.TextureId = "rbxassetid://120849093264241" -- 🧰 tool icon
+tool.Parent = player.Backpack
+
+-- SETTINGS --
+local SNAP = 4
+local BLOCK_SIZE = Vector3.new(SNAP, SNAP, SNAP)
+local DEBOUNCE = 0.08
+
+-- YOUR ASSET IDS (oak base kept)
+local TEXTURE_TOP = "rbxassetid://9359126646"
+local TEXTURE_SIDES = "rbxassetid://9359126646"
+local TEXTURE_BOTTOM = "rbxassetid://9359126646"
+
+local PLACE_SOUND_ID = "rbxassetid://8394333801"
+local DELETE_SOUND_ID = "rbxassetid://108301528263788"
+
+-- GUI ICON IDS (from your list)
+local ICON_PLACE = "rbxassetid://87182246412476"
+local ICON_BREAK = "rbxassetid://81586559343799"
+local ICON_FREEZE_ON = "rbxassetid://7062292586"
+local ICON_FREEZE_OFF = "rbxassetid://13369776137"
+local ICON_LOCK_ON = "rbxassetid://13967666260"
+local ICON_LOCK_OFF = "rbxassetid://13967667066"
+
+-- GLOBALS --
+local lastPlaced = 0
+local previewBlock = nil
+local highlight = nil
+local placeButton, lockButton, deleteButton, freezeButton
+local lockMode = false
+local freezeMode = false
+local placedBlocks = {}
+
+-- Sounds
+local placeSound = Instance.new("Sound")
+placeSound.SoundId = PLACE_SOUND_ID
+placeSound.Volume = 1
+placeSound.Parent = PlayerGui
+
+local deleteSound = Instance.new("Sound")
+deleteSound.SoundId = DELETE_SOUND_ID
+deleteSound.Volume = 1
+deleteSound.Parent = PlayerGui
+
+-- Helpers --
+local function snapToGrid(pos)
+	local function s(v) return math.floor(v / SNAP + 0.5) * SNAP end
+	return Vector3.new(s(pos.X), s(pos.Y), s(pos.Z))
+end
+
+local function tweenBlock(block, goalProps, time)
+	local tweenInfo = TweenInfo.new(time or 0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+	local tween = TweenService:Create(block, tweenInfo, goalProps)
+	tween:Play()
+end
+
+local function animatePlaceBlock(block)
+	block.Transparency = 0.3
+	tweenBlock(block, {Transparency = 0}, 0.2)
+	tweenBlock(block, {Size = BLOCK_SIZE * 1.2}, 0.2)
+	task.wait(0.2)
+	tweenBlock(block, {Size = BLOCK_SIZE}, 0.1)
+end
+
+-- Apply textures to top/bottom/sides separately
+local function addTextures(part)
+	local sides = {
+		Enum.NormalId.Front,
+		Enum.NormalId.Back,
+		Enum.NormalId.Left,
+		Enum.NormalId.Right
+	}
+	for _, face in ipairs(sides) do
+		local tex = Instance.new("Texture")
+		tex.Texture = TEXTURE_SIDES
+		tex.Face = face
+		tex.StudsPerTileU = 4
+		tex.StudsPerTileV = 4
+		tex.Parent = part
+	end
+
+	local top = Instance.new("Texture")
+	top.Texture = TEXTURE_TOP
+	top.Face = Enum.NormalId.Top
+	top.StudsPerTileU = 4
+	top.StudsPerTileV = 4
+	top.Parent = part
+
+	local bottom = Instance.new("Texture")
+	bottom.Texture = TEXTURE_BOTTOM
+	bottom.Face = Enum.NormalId.Bottom
+	bottom.StudsPerTileU = 4
+	bottom.StudsPerTileV = 4
+	bottom.Parent = part
+end
+
+-- Place Block
+local function placeBlockAtPosition(worldPos)
+	if not worldPos then return end
+	if tick() - lastPlaced < DEBOUNCE then return end
+	lastPlaced = tick()
+	local center = snapToGrid(worldPos)
+
+	for _, b in ipairs(placedBlocks) do
+		if (b.Position - center).Magnitude < 0.1 then return end
+	end
+
+	local block = Instance.new("Part")
+	block.Size = BLOCK_SIZE
+	block.Anchored = true
+	block.CanCollide = true
+	block.Material = Enum.Material.SmoothPlastic
+	block.BrickColor = BrickColor.new("Bright green")
+	block.CFrame = CFrame.new(center)
+	block.Name = "ClientBlock"
+	block.Parent = workspace
+	table.insert(placedBlocks, block)
+	block.Transparency = 0.3
+	addTextures(block)
+	placeSound:Play()
+	animatePlaceBlock(block)
+end
+
+-- Delete nearest block
+local function deleteBlockAtPosition(worldPos)
+	if not worldPos then return end
+	local nearestBlock, nearestDist, nearestIdx
+	for i, block in ipairs(placedBlocks) do
+		local dist = (block.Position - worldPos).Magnitude
+		if not nearestDist or dist < nearestDist then
+			nearestDist = dist
+			nearestBlock = block
+			nearestIdx = i
+		end
+	end
+	if nearestBlock and nearestDist and nearestDist < SNAP then
+		table.remove(placedBlocks, nearestIdx)
+		deleteSound:Play()
+		nearestBlock:Destroy()
+	end
+end
+
+-- Preview Block
+local function makePreview()
+	if previewBlock then return end
+	previewBlock = Instance.new("Part")
+	previewBlock.Size = BLOCK_SIZE
+	previewBlock.Anchored = true
+	previewBlock.CanCollide = false
+	previewBlock.Transparency = 0.3
+	previewBlock.Material = Enum.Material.Neon
+	previewBlock.BrickColor = BrickColor.new("Lime green")
+	previewBlock.Name = "PreviewBlock"
+	previewBlock.Parent = workspace
+	highlight = Instance.new("Highlight")
+	highlight.FillTransparency = 1
+	highlight.OutlineColor = Color3.fromRGB(0, 255, 0)
+	highlight.OutlineTransparency = 0
+	highlight.Parent = previewBlock
+end
+
+local function removePreview()
+	if previewBlock then
+		previewBlock:Destroy()
+		previewBlock = nil
+		highlight = nil
+	end
+end
+
+local function getLockRayOrigin()
+	if player.Character and player.Character:FindFirstChild("Head") then
+		return player.Character.Head.Position
+	end
+	return camera.CFrame.Position
+end
+
+-- GUI Setup (black glass buttons with icons + 2s hold protection)
+local function createGUI()
+	-- cleanup
+	if PlayerGui:FindFirstChild("BlockPlacerGUI") then PlayerGui.BlockPlacerGUI:Destroy() end
+
+	local screenGui = Instance.new("ScreenGui")
+	screenGui.Name = "BlockPlacerGUI"
+	screenGui.ResetOnSpawn = false
+	screenGui.IgnoreGuiInset = true
+	screenGui.Parent = PlayerGui
+
+	-- helper to create image buttons (60x60), black bg, 0.3 transparency
+	local function makeIconButton(imageId, pos)
+		local btn = Instance.new("ImageButton")
+		btn.Size = UDim2.new(0, 60, 0, 60)
+		btn.Position = pos
+		btn.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+		btn.BackgroundTransparency = 0.3
+		btn.Image = imageId
+		btn.ScaleType = Enum.ScaleType.Fit
+		btn.Parent = screenGui
+		local corner = Instance.new("UICorner")
+		corner.CornerRadius = UDim.new(1, 0)
+		corner.Parent = btn
+		return btn
+	end
+
+	-- positions mimic your previous layout (2x2)
+	placeButton = makeIconButton(ICON_PLACE, UDim2.new(1, -90, 1, -180))
+	lockButton  = makeIconButton(ICON_LOCK_OFF, UDim2.new(1, -90, 1, -260))
+	deleteButton= makeIconButton(ICON_BREAK, UDim2.new(1, -180, 1, -180))
+	freezeButton= makeIconButton(ICON_FREEZE_OFF, UDim2.new(1, -180, 1, -260))
+
+	-- Hold protection utility (2s hold = ignore)
+	local function setupHoldProtection(button, callback)
+		local pressTime
+		button.InputBegan:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+				pressTime = tick()
+			end
+		end)
+		button.InputEnded:Connect(function(input)
+			if not pressTime then return end
+			if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+				if tick() - pressTime < 2 then
+					-- short click -> run
+					pcall(callback)
+				end
+				pressTime = nil
+			end
+		end)
+	end
+
+	-- Place
+	setupHoldProtection(placeButton, function()
+		-- if lock mode, use lock ray; else prefer previewBlock
+		if freezeMode then return end
+		local targetPos
+		if lockMode then
+			local rayOrigin = getLockRayOrigin()
+			local rayDirection = camera.CFrame.LookVector * 100
+			local params = RaycastParams.new()
+			params.FilterType = Enum.RaycastFilterType.Blacklist
+			params.FilterDescendantsInstances = {player.Character, previewBlock}
+			local result = workspace:Raycast(rayOrigin, rayDirection, params)
+			targetPos = result and result.Position or (rayOrigin + rayDirection)
+		else
+			if previewBlock then
+				targetPos = previewBlock.Position
+			else
+				local m = player:GetMouse()
+				if m and m.Hit then targetPos = m.Hit.p end
+			end
+		end
+		if targetPos then placeBlockAtPosition(targetPos) end
+	end)
+
+	-- Delete
+	setupHoldProtection(deleteButton, function()
+		if freezeMode then return end
+		local targetPos
+		if lockMode then
+			local rayOrigin = getLockRayOrigin()
+			local rayDirection = camera.CFrame.LookVector * 100
+			local params = RaycastParams.new()
+			params.FilterType = Enum.RaycastFilterType.Blacklist
+			params.FilterDescendantsInstances = {player.Character, previewBlock}
+			local result = workspace:Raycast(rayOrigin, rayDirection, params)
+			targetPos = result and result.Position or (rayOrigin + rayDirection)
+		else
+			local m = player:GetMouse()
+			if m and m.Hit then targetPos = m.Hit.p end
+		end
+		if targetPos then deleteBlockAtPosition(targetPos) end
+	end)
+
+	-- Freeze toggle
+	setupHoldProtection(freezeButton, function()
+		freezeMode = not freezeMode
+		freezeButton.Image = freezeMode and ICON_FREEZE_ON or ICON_FREEZE_OFF
+	end)
+
+	-- Lock toggle
+	setupHoldProtection(lockButton, function()
+		lockMode = not lockMode
+		lockButton.Image = lockMode and ICON_LOCK_ON or ICON_LOCK_OFF
+	end)
+end
+
+-- Equip-only click handlers (solves deletion while unequipped)
+local equipDeleteConn = nil
+local equipPlaceConn = nil
+local equipShiftConn = nil
+local equipCtrlConn = nil
+
+local function enableEquipClickHandlers()
+	-- clean old
+	if equipDeleteConn then equipDeleteConn:Disconnect() equipDeleteConn = nil end
+	if equipPlaceConn then equipPlaceConn:Disconnect() equipPlaceConn = nil end
+	if equipShiftConn then equipShiftConn:Disconnect() equipShiftConn = nil end
+	if equipCtrlConn then equipCtrlConn:Disconnect() equipCtrlConn = nil end
+
+	local m = player:GetMouse()
+
+	-- Left click delete on clicked block (only while equipped)
+	equipDeleteConn = m.Button1Down:Connect(function()
+		if freezeMode or lockMode then return end
+		if UserInputService:GetFocusedTextBox() then return end
+		local target = m.Target
+		if not target then return end
+		for i = 1, #placedBlocks do
+			local block = placedBlocks[i]
+			if block and (target == block or target:IsDescendantOf(block)) then
+				deleteSound:Play()
+				task.wait(deleteSound.TimeLength)
+				block:Destroy()
+				table.remove(placedBlocks, i)
+				return
+			end
+		end
+	end)
+
+	-- Right click placement (works with lock mode)
+	equipPlaceConn = m.Button2Down:Connect(function()
+		if freezeMode then return end
+		local targetPos
+		if lockMode then
+			local rayOrigin = getLockRayOrigin()
+			local rayDirection = camera.CFrame.LookVector * 100
+			local params = RaycastParams.new()
+			params.FilterType = Enum.RaycastFilterType.Blacklist
+			params.FilterDescendantsInstances = {player.Character, previewBlock}
+			local result = workspace:Raycast(rayOrigin, rayDirection, params)
+			targetPos = result and result.Position or (rayOrigin + rayDirection)
+		else
+			if previewBlock then
+				targetPos = previewBlock.Position
+			else
+				if m and m.Hit then targetPos = m.Hit.p end
+			end
+		end
+		if targetPos then placeBlockAtPosition(targetPos) end
+	end)
+
+	-- Keybinds while equipped (Shift = Freeze, Ctrl = Lock) and update GUI icons if present
+	equipShiftConn = UserInputService.InputBegan:Connect(function(input, gpe)
+		if gpe then return end
+		if input.KeyCode == Enum.KeyCode.LeftShift then
+			freezeMode = not freezeMode
+			if freezeButton then freezeButton.Image = freezeMode and ICON_FREEZE_ON or ICON_FREEZE_OFF end
+		end
+	end)
+
+	equipCtrlConn = UserInputService.InputBegan:Connect(function(input, gpe)
+		if gpe then return end
+		if input.KeyCode == Enum.KeyCode.LeftControl then
+			lockMode = not lockMode
+			if lockButton then lockButton.Image = lockMode and ICON_LOCK_ON or ICON_LOCK_OFF end
+		end
+	end)
+end
+
+local function disableEquipClickHandlers()
+	if equipDeleteConn then equipDeleteConn:Disconnect() equipDeleteConn = nil end
+	if equipPlaceConn then equipPlaceConn:Disconnect() equipPlaceConn = nil end
+	if equipShiftConn then equipShiftConn:Disconnect() equipShiftConn = nil end
+	if equipCtrlConn then equipCtrlConn:Disconnect() equipCtrlConn = nil end
+end
+
+-- Live preview update
+RunService.RenderStepped:Connect(function()
+	if not previewBlock or freezeMode then return end
+	local targetPos
+	if lockMode then
+		local rayOrigin = getLockRayOrigin()
+		local rayDirection = camera.CFrame.LookVector * 100
+		local raycastParams = RaycastParams.new()
+		raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
+		raycastParams.FilterDescendantsInstances = {player.Character, previewBlock}
+		local result = workspace:Raycast(rayOrigin, rayDirection, raycastParams)
+		targetPos = result and result.Position or (rayOrigin + rayDirection)
+	else
+		local m = player:GetMouse()
+		if m and m.Hit then targetPos = m.Hit.p end
+	end
+	if targetPos then
+		local pos = snapToGrid(targetPos)
+		previewBlock.CFrame = CFrame.new(pos)
+		local exists = false
+		for _, b in ipairs(placedBlocks) do
+			if (b.Position - pos).Magnitude < 0.1 then exists = true break end
+		end
+		if exists then
+			previewBlock.BrickColor = BrickColor.new("Really red")
+			if highlight then highlight.OutlineColor = Color3.fromRGB(255, 0, 0) end
+		else
+			previewBlock.BrickColor = BrickColor.new("Lime green")
+			if highlight then highlight.OutlineColor = Color3.fromRGB(0, 255, 0) end
+		end
+	end
+end)
+
+-- Tool equipped/unequipped
+tool.Equipped:Connect(function()
+	makePreview()
+	createGUI()
+	enableEquipClickHandlers()
+end)
+
+tool.Unequipped:Connect(function()
+	removePreview()
+	if PlayerGui:FindFirstChild("BlockPlacerGUI") then PlayerGui.BlockPlacerGUI:Destroy() end
+	disableEquipClickHandlers()
+end)
+
+-- end of script
