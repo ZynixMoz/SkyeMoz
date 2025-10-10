@@ -13,33 +13,27 @@ local Window = Rayfield:CreateWindow({
         Enabled = false
     },
     KeySystem = false,
-    Image = "rbxassetid://6429781431", -- fixed title image
+    Image = "rbxassetid://6429781431",
     Theme = {
         TextColor = Color3.fromRGB(240, 240, 240),
-
-        Background = Color3.fromRGB(20, 40, 20), -- dark green background
+        Background = Color3.fromRGB(20, 40, 20),
         Topbar = Color3.fromRGB(15, 35, 15),
         Shadow = Color3.fromRGB(10, 30, 10),
-
         NotificationBackground = Color3.fromRGB(25, 45, 25),
         NotificationActionsBackground = Color3.fromRGB(60, 80, 60),
-
         TabBackground = Color3.fromRGB(30, 60, 30),
         TabStroke = Color3.fromRGB(25, 55, 25),
         TabBackgroundSelected = Color3.fromRGB(40, 80, 40),
         TabTextColor = Color3.fromRGB(240, 240, 240),
         SelectedTabTextColor = Color3.fromRGB(255, 255, 255),
-
         ElementBackground = Color3.fromRGB(35, 70, 35),
         ElementBackgroundHover = Color3.fromRGB(45, 85, 45),
         SecondaryElementBackground = Color3.fromRGB(30, 60, 30),
         ElementStroke = Color3.fromRGB(50, 100, 50),
         SecondaryElementStroke = Color3.fromRGB(40, 80, 40),
-                
         SliderBackground = Color3.fromRGB(50, 138, 220),
         SliderProgress = Color3.fromRGB(50, 138, 220),
         SliderStroke = Color3.fromRGB(58, 163, 255),
-
         ToggleBackground = Color3.fromRGB(30, 30, 30),
         ToggleEnabled = Color3.fromRGB(0, 146, 214),
         ToggleDisabled = Color3.fromRGB(100, 100, 100),
@@ -47,22 +41,19 @@ local Window = Rayfield:CreateWindow({
         ToggleDisabledStroke = Color3.fromRGB(125, 125, 125),
         ToggleEnabledOuterStroke = Color3.fromRGB(100, 100, 100),
         ToggleDisabledOuterStroke = Color3.fromRGB(65, 65, 65),
-
         DropdownSelected = Color3.fromRGB(40, 40, 40),
         DropdownUnselected = Color3.fromRGB(30, 30, 30),
-
         InputBackground = Color3.fromRGB(30, 30, 30),
         InputStroke = Color3.fromRGB(65, 65, 65),
         PlaceholderColor = Color3.fromRGB(178, 178, 178)
     }
 })
 
--- function for button creation with Equip text and click sound
 local function CreateButton(tab, name, link)
     tab:CreateButton({
         Name = name,
-        SubText = "rbxassetid://8227034071", -- image texture as subtext
-        RightText = "Equip", -- replace "button" with "Equip"
+        SubText = "rbxassetid://8227034071",
+        RightText = "Equip",
         Callback = function()
             local sound = Instance.new("Sound")
             sound.SoundId = "rbxassetid://535716488"
@@ -112,7 +103,7 @@ local ground = {
     {Name = "Bedrock", Link = "https://raw.githubusercontent.com/ZynixMoz/SkyeMoz/refs/heads/main/Minecraft/Blocks/Nature/Bedrock"},
     {Name = "Dirt", Link = "https://raw.githubusercontent.com/ZynixMoz/SkyeMoz/refs/heads/main/Minecraft/Blocks/Nature/Dirt"},
     {Name = "Grass", Link = "https://raw.githubusercontent.com/ZynixMoz/SkyeMoz/refs/heads/main/Minecraft/Blocks/Nature/Grass"},
-    {Name = "Stone Block", Link = "https://raw.githubusercontent.com/ZynixMoz/SkyeMoz/refs/heads/main/Minecraft/Blocks/Nature/Stone%20Block"}
+    {Name = "Stone Block", Link = "https://raw.githubusercontent.com/ZynixMoz/SkyeMoz/refs/heads/main/Minecraft/Blocks/Nature/Stone%20Block"},
     {Name = "Flat Map", Link = "https://raw.githubusercontent.com/ZynixMoz/SkyeMoz/refs/heads/main/Minecraft/Functions/Guis/MapGenerator"}
 }
 for _, g in ipairs(ground) do
