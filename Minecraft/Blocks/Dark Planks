@@ -1,0 +1,430 @@
+-- // 🧱 Stone Block🔥 by SkyeMoz + ZynixMoz (freeze removed clean full version + smooth gui + tweened preview + select mode + player-safe preview + raycast fix)
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+
+local player = Players.LocalPlayer
+local camera = workspace.CurrentCamera
+local PlayerGui = player:WaitForChild("PlayerGui")
+
+-- TOOL SETUP --
+local tool = Instance.new("Tool")
+tool.Name = "Block Placer"
+tool.RequiresHandle = false
+tool.TextureId = "rbxassetid://8082928642"
+tool.Parent = player.Backpack
+
+-- SETTINGS --
+local SNAP = 4
+local BLOCK_SIZE = Vector3.new(SNAP, SNAP, SNAP)
+local DEBOUNCE = 0.08
+
+-- YOUR ASSET IDS
+local TEXTURE_TOP = "rbxassetid://8987461679"
+local TEXTURE_SIDES = "rbxassetid://8987461679"
+local TEXTURE_BOTTOM = "rbxassetid://8987461679"
+local PLACE_SOUND_ID = "rbxassetid://6496157434"
+local DELETE_SOUND_ID = "rbxassetid://6496157434"
+
+-- GUI ICON IDS
+local ICON_PLACE = "rbxassetid://87182246412476"
+local ICON_BREAK = "rbxassetid://81586559343799"
+local ICON_LOCK_ON = "rbxassetid://13967666260"
+local ICON_LOCK_OFF = "rbxassetid://13967667066"
+local ICON_SELECT_ON = "rbxassetid://13638959077"
+local ICON_SELECT_OFF = "rbxassetid://12988755627"
+
+-- GLOBALS --
+local lastPlaced = 0
+local lastDelete = 0
+local DELETE_DEBOUNCE = 0.08
+local previewBlock = nil
+local highlight = nil
+local placeButton, lockButton, deleteButton, selectButton
+local lockMode = false
+local selectMode = true -- default ON
+local placedBlocks = {}
+local lastPreviewPos = nil
+local previewTween = nil
+
+-- Sounds
+local placeSound = Instance.new("Sound")
+placeSound.SoundId = PLACE_SOUND_ID
+placeSound.Volume = 1
+placeSound.Parent = PlayerGui
+
+local deleteSound = Instance.new("Sound")
+deleteSound.SoundId = DELETE_SOUND_ID
+deleteSound.Volume = 1
+deleteSound.Parent = PlayerGui
+
+-- Helpers --
+local function snapToGrid(pos)
+local function s(v) return math.floor(v / SNAP + 0.5) * SNAP end
+return Vector3.new(s(pos.X), s(pos.Y), s(pos.Z))
+end
+
+local function tweenBlock(block, goalProps, time)
+local tweenInfo = TweenInfo.new(time or 0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+local tween = TweenService:Create(block, tweenInfo, goalProps)
+tween:Play()
+return tween
+end
+
+local function animatePlaceBlock(block)
+block.Transparency = 0.3
+tweenBlock(block, {Transparency = 0}, 0.2)
+tweenBlock(block, {Size = BLOCK_SIZE * 1.2}, 0.2)
+task.wait(0.2)
+tweenBlock(block, {Size = BLOCK_SIZE}, 0.1)
+end
+
+-- Raycast filter builder (FIX)
+-- Only blacklist player and — if selectMode is ON — the previewBlock.
+-- Do NOT blacklist placedBlocks here so raycasts can hit them (selection works).
+local function buildRaycastFilterList()
+local list = {}
+if player.Character then
+table.insert(list, player.Character)
+end
+-- When selectMode is ON we want the preview to be ignored (so you can select placed blocks),
+-- so add the preview to the blacklist only when selectMode == true.
+if selectMode and previewBlock then
+table.insert(list, previewBlock)
+end
+return list
+end
+
+-- NEW: only change for player collision safety
+local function updatePreviewCollision()
+if not previewBlock then return end
+
+-- desire: preview collides when selectMode == false  
+local shouldCollide = not selectMode  
+
+-- if it would collide, but is overlapping the local player's character, disable collision so it doesn't block the player  
+if shouldCollide and player.Character then  
+	local pos = previewBlock.Position  
+	local halfPreview = Vector3.new(BLOCK_SIZE.X / 2, BLOCK_SIZE.Y / 2, BLOCK_SIZE.Z / 2)  
+	for _, part in ipairs(player.Character:GetDescendants()) do  
+		if part:IsA("BasePart") then  
+			local dx = math.abs(part.Position.X - pos.X)  
+			local dy = math.abs(part.Position.Y - pos.Y)  
+			local dz = math.abs(part.Position.Z - pos.Z)  
+			if dx <= (part.Size.X / 2 + halfPreview.X)  
+			and dy <= (part.Size.Y / 2 + halfPreview.Y)  
+			and dz <= (part.Size.Z / 2 + halfPreview.Z) then  
+				-- overlap with player's part detected -> don't collide with player  
+				shouldCollide = false  
+				break  
+			end  
+		end  
+	end  
+end  
+
+-- apply computed collision state  
+previewBlock.CanCollide = shouldCollide
+
+end
+
+-- Apply textures
+local function addTextures(part)
+local sides = {
+Enum.NormalId.Front,
+Enum.NormalId.Back,
+Enum.NormalId.Left,
+Enum.NormalId.Right
+}
+for _, face in ipairs(sides) do
+local tex = Instance.new("Texture")
+tex.Texture = TEXTURE_SIDES
+tex.Face = face
+tex.StudsPerTileU = 4
+tex.StudsPerTileV = 4
+tex.Parent = part
+end
+
+local top = Instance.new("Texture")  
+top.Texture = TEXTURE_TOP  
+top.Face = Enum.NormalId.Top  
+top.StudsPerTileU = 4  
+top.StudsPerTileV = 4  
+top.Parent = part  
+
+local bottom = Instance.new("Texture")  
+bottom.Texture = TEXTURE_BOTTOM  
+bottom.Face = Enum.NormalId.Bottom  
+bottom.StudsPerTileU = 4  
+bottom.StudsPerTileV = 4  
+bottom.Parent = part
+
+end
+
+-- Place / Delete logic untouched
+local function placeBlockAtPosition(worldPos)
+if not worldPos then return end
+if tick() - lastPlaced < DEBOUNCE then return end
+lastPlaced = tick()
+local center = snapToGrid(worldPos)
+
+for _, b in ipairs(placedBlocks) do  
+	if (b.Position - center).Magnitude < 0.1 then return end  
+end  
+
+local block = Instance.new("Part")  
+block.Size = BLOCK_SIZE  
+block.Anchored = true  
+block.CanCollide = true  
+block.Material = Enum.Material.SmoothPlastic  
+block.BrickColor = BrickColor.new("Bright green")  
+block.CFrame = CFrame.new(center)  
+block.Name = "ClientBlock"  
+block.Parent = workspace  
+table.insert(placedBlocks, block)  
+block.Transparency = 0.3  
+addTextures(block)  
+placeSound:Play()  
+animatePlaceBlock(block)
+
+end
+
+local function deleteBlockAtPosition(worldPos)
+if not worldPos then return end
+if tick() - lastDelete < DELETE_DEBOUNCE then return end
+lastDelete = tick()
+
+local nearestBlock, nearestDist, nearestIdx  
+for i, block in ipairs(placedBlocks) do  
+	local dist = (block.Position - worldPos).Magnitude  
+	if not nearestDist or dist < nearestDist then  
+		nearestDist = dist  
+		nearestBlock = block  
+		nearestIdx = i  
+	end  
+end  
+if nearestBlock and nearestDist and nearestDist < SNAP then  
+	deleteSound:Play()  
+	task.defer(function()  
+		table.remove(placedBlocks, nearestIdx)  
+		nearestBlock:Destroy()  
+	end)  
+end
+
+end
+
+-- Preview Block --
+local function makePreview()
+if previewBlock then return end
+previewBlock = Instance.new("Part")
+previewBlock.Size = BLOCK_SIZE
+previewBlock.Anchored = true
+-- set default; updatePreviewCollision() will compute final state
+previewBlock.CanCollide = false
+previewBlock.Transparency = 0.3
+previewBlock.Material = Enum.Material.Neon
+previewBlock.BrickColor = BrickColor.new("Lime green")
+previewBlock.Name = "PreviewBlock"
+previewBlock.Parent = workspace
+highlight = Instance.new("Highlight")
+highlight.FillTransparency = 1
+highlight.OutlineColor = Color3.fromRGB(0, 255, 0)
+highlight.OutlineTransparency = 0
+highlight.Parent = previewBlock
+
+-- initial collision apply  
+updatePreviewCollision()
+
+end
+
+local function removePreview()
+if previewBlock then
+if previewTween then
+pcall(function() previewTween:Cancel() end)
+previewTween = nil
+end
+previewBlock:Destroy()
+previewBlock = nil
+highlight = nil
+end
+end
+
+local function getLockRayOrigin()
+if player.Character and player.Character:FindFirstChild("Head") then
+return player.Character.Head.Position
+end
+return camera.CFrame.Position
+end
+
+-- GUI Setup (animation added + new button)
+local function createGUI()
+if PlayerGui:FindFirstChild("BlockPlacerGUI") then
+PlayerGui.BlockPlacerGUI:Destroy()
+task.wait(0.05)
+end
+
+local screenGui = Instance.new("ScreenGui")  
+screenGui.Name = "BlockPlacerGUI"  
+screenGui.ResetOnSpawn = false  
+screenGui.IgnoreGuiInset = true  
+screenGui.Parent = PlayerGui  
+
+local function animateButton(btn, scaleUp)  
+	local target = scaleUp and UDim2.new(0, 70, 0, 70) or UDim2.new(0, 60, 0, 60)  
+	TweenService:Create(btn, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Size = target}):Play()  
+end  
+
+local function makeIconButton(imageId, pos)  
+	local btn = Instance.new("ImageButton")  
+	btn.Size = UDim2.new(0, 60, 0, 60)  
+	btn.Position = pos  
+	btn.BackgroundColor3 = Color3.fromRGB(0, 0, 0)  
+	btn.BackgroundTransparency = 0.3  
+	btn.Image = imageId  
+	btn.ScaleType = Enum.ScaleType.Fit  
+	btn.Parent = screenGui  
+	local corner = Instance.new("UICorner")  
+	corner.CornerRadius = UDim.new(1, 0)  
+	corner.Parent = btn  
+
+	btn.MouseButton1Down:Connect(function() animateButton(btn, true) end)  
+	btn.MouseButton1Up:Connect(function() animateButton(btn, false) end)  
+	btn.MouseLeave:Connect(function() animateButton(btn, false) end)  
+	return btn  
+end  
+
+placeButton = makeIconButton(ICON_PLACE, UDim2.new(1, -90, 1, -180))  
+lockButton  = makeIconButton(ICON_LOCK_OFF, UDim2.new(1, -90, 1, -260))  
+selectButton = makeIconButton(selectMode and ICON_SELECT_ON or ICON_SELECT_OFF, UDim2.new(1, -90, 1, -340))  
+deleteButton= makeIconButton(ICON_BREAK, UDim2.new(1, -180, 1, -180))  
+
+local function setupHoldProtection(button, callback)  
+	local pressTime  
+	local holding = false  
+	button.InputBegan:Connect(function(input)  
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then  
+			pressTime = tick()  
+			holding = true  
+			TweenService:Create(button, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Size = UDim2.new(0, 75, 0, 75)}):Play()  
+		end  
+	end)  
+	button.InputEnded:Connect(function(input)  
+		if not pressTime then return end  
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then  
+			holding = false  
+			TweenService:Create(button, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Size = UDim2.new(0, 60, 0, 60)}):Play()  
+			if tick() - pressTime < 2 then  
+				pcall(callback)  
+			end  
+			pressTime = nil  
+		end  
+	end)  
+end  
+
+setupHoldProtection(placeButton, function()  
+	local targetPos  
+	if lockMode then  
+		local rayOrigin = getLockRayOrigin()  
+		local rayDirection = camera.CFrame.LookVector * 100  
+		local params = RaycastParams.new()  
+		params.FilterType = Enum.RaycastFilterType.Blacklist  
+		params.FilterDescendantsInstances = buildRaycastFilterList()  
+		local result = workspace:Raycast(rayOrigin, rayDirection, params)  
+		targetPos = result and result.Position or lastPreviewPos or (rayOrigin + rayDirection.Unit * 10)  
+	else  
+		if previewBlock then  
+			targetPos = previewBlock.Position  
+		else  
+			local m = player:GetMouse()  
+			if m and m.Hit then targetPos = m.Hit.p end  
+		end  
+	end  
+	if targetPos then placeBlockAtPosition(targetPos) end  
+end)  
+
+setupHoldProtection(deleteButton, function()  
+	local targetPos  
+	if lockMode then  
+		local rayOrigin = getLockRayOrigin()  
+		local rayDirection = camera.CFrame.LookVector * 100  
+		local params = RaycastParams.new()  
+		params.FilterType = Enum.RaycastFilterType.Blacklist  
+		params.FilterDescendantsInstances = buildRaycastFilterList()  
+		local result = workspace:Raycast(rayOrigin, rayDirection, params)  
+		targetPos = result and result.Position or lastPreviewPos or (rayOrigin + rayDirection.Unit * 10)  
+	else  
+		local m = player:GetMouse()  
+		if m and m.Hit then targetPos = m.Hit.p end  
+	end  
+	if targetPos then deleteBlockAtPosition(targetPos) end  
+end)  
+
+setupHoldProtection(lockButton, function()  
+	lockMode = not lockMode  
+	lockButton.Image = lockMode and ICON_LOCK_ON or ICON_LOCK_OFF  
+end)  
+
+setupHoldProtection(selectButton, function()  
+	selectMode = not selectMode  
+	selectButton.Image = selectMode and ICON_SELECT_ON or ICON_SELECT_OFF  
+	-- update preview collision according to new selectMode (and avoid blocking the player)  
+	if previewBlock then  
+		updatePreviewCollision()  
+	end  
+end)
+
+end
+
+-- Smooth Preview Movement (raycast filter respects selectMode now)
+RunService.RenderStepped:Connect(function()
+if not previewBlock then return end
+local targetPos
+if lockMode then
+local rayOrigin = getLockRayOrigin()
+local rayDirection = camera.CFrame.LookVector * 100
+local raycastParams = RaycastParams.new()
+raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
+raycastParams.FilterDescendantsInstances = buildRaycastFilterList()
+local result = workspace:Raycast(rayOrigin, rayDirection, raycastParams)
+targetPos = result and result.Position or lastPreviewPos or (rayOrigin + rayDirection.Unit * 10)
+else
+local m = player:GetMouse()
+if m and m.Hit then targetPos = m.Hit.p end
+end
+if targetPos then
+lastPreviewPos = targetPos
+local pos = snapToGrid(targetPos)
+if previewTween then
+pcall(function() previewTween:Cancel() end)
+end
+previewTween = tweenBlock(previewBlock, {CFrame = CFrame.new(pos)}, 0.1)
+
+-- update collision to avoid blocking the local player (only changes preview collision behavior)  
+	updatePreviewCollision()  
+
+	local exists = false  
+	for _, b in ipairs(placedBlocks) do  
+		if (b.Position - pos).Magnitude < 0.1 then exists = true break end  
+	end  
+	if exists then  
+		previewBlock.BrickColor = BrickColor.new("Really red")  
+		if highlight then highlight.OutlineColor = Color3.fromRGB(255, 0, 0) end  
+	else  
+		previewBlock.BrickColor = BrickColor.new("Lime green")  
+		if highlight then highlight.OutlineColor = Color3.fromRGB(0, 255, 0) end  
+	end  
+end
+
+end)
+
+-- Equip handlers unchanged
+tool.Equipped:Connect(function()
+makePreview()
+createGUI()
+end)
+
+tool.Unequipped:Connect(function()
+removePreview()
+if PlayerGui:FindFirstChild("BlockPlacerGUI") then PlayerGui.BlockPlacerGUI:Destroy() end
+end)
