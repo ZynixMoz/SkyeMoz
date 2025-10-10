@@ -1,0 +1,298 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+local player = Players.LocalPlayer
+local PlayerGui = player:WaitForChild("PlayerGui")
+
+local SNAP = 4
+local BLOCK_SIZE = Vector3.new(SNAP, SNAP, SNAP)
+
+local generating = false
+local placedBlocks = {}
+local GENERATION_SPEED = 0.01
+local SIZE = 50
+local DEPTH_DIRT = 3
+local DEPTH_STONE = 2
+local MAX_BLOCKS = 500000
+
+-- TEXTURES
+local TEXTURE_TOP_GRASS = "rbxassetid://9267183930"
+local TEXTURE_SIDES_GRASS = "rbxassetid://9267155972"
+local TEXTURE_BOTTOM_GRASS = "rbxassetid://7901287342"
+local TEXTURE_TOP_STONE = "rbxassetid://135181604249180"
+local TEXTURE_SIDES_STONE = "rbxassetid://135181604249180"
+local TEXTURE_BOTTOM_STONE = "rbxassetid://135181604249180"
+local TEXTURE_BOTTOM_BEDROCK = "rbxassetid://12252439624"
+
+local TEXTURE_TOP = "rbxassetid://9246428873"
+local TEXTURE_SIDES = "rbxassetid://9246428873"
+local TEXTURE_BOTTOM = "rbxassetid://9246428873"
+
+local function snapToGrid(pos)
+	local function s(v) return math.floor(v / SNAP + 0.5) * SNAP end
+	return Vector3.new(s(pos.X), s(pos.Y), s(pos.Z))
+end
+
+local function addTextures(part, top, sides, bottom)
+	local faces = {Enum.NormalId.Front, Enum.NormalId.Back, Enum.NormalId.Left, Enum.NormalId.Right}
+	for _, face in ipairs(faces) do
+		local tex = Instance.new("Texture")
+		tex.Texture = sides
+		tex.Face = face
+		tex.StudsPerTileU = 4
+		tex.StudsPerTileV = 4
+		tex.Parent = part
+	end
+	local topTex = Instance.new("Texture")
+	topTex.Texture = top
+	topTex.Face = Enum.NormalId.Top
+	topTex.StudsPerTileU = 4
+	topTex.StudsPerTileV = 4
+	topTex.Parent = part
+
+	local bottomTex = Instance.new("Texture")
+	bottomTex.Texture = bottom
+	bottomTex.Face = Enum.NormalId.Bottom
+	bottomTex.StudsPerTileU = 4
+	bottomTex.StudsPerTileV = 4
+	bottomTex.Parent = part
+end
+
+local function clearBlocks()
+	for _, block in ipairs(placedBlocks) do
+		if block and block.Parent then
+			block:Destroy()
+		end
+	end
+	placedBlocks = {}
+end
+
+local function generateFlatWorld(centerPos, button)
+	local halfSize = SIZE / 2
+	local blocks = {}
+	local totalBlocks = 0
+
+	for radius = 0, halfSize - 1 do
+		for x = -radius, radius do
+			for z = -radius, radius do
+				if math.abs(x) == radius or math.abs(z) == radius then
+					table.insert(blocks, Vector3.new(centerPos.X + x * SNAP, centerPos.Y, centerPos.Z + z * SNAP))
+				end
+			end
+		end
+	end
+
+	local index = 1
+	while generating and index <= #blocks do
+		local pos = blocks[index]
+
+		-- Grass layer
+		for d = 0, 0 do
+			if not generating then break end
+			if totalBlocks >= MAX_BLOCKS then generating = false break end
+			local block = Instance.new("Part")
+			block.Size = BLOCK_SIZE
+			block.Anchored = true
+			block.CanCollide = true
+			block.CFrame = CFrame.new(pos - Vector3.new(0, d * SNAP, 0))
+			block.Name = "FlatBlock"
+			block.Parent = workspace
+			placedBlocks[#placedBlocks+1] = block
+			addTextures(block, TEXTURE_TOP_GRASS, TEXTURE_SIDES_GRASS, TEXTURE_BOTTOM_GRASS)
+			totalBlocks += 1
+			wait(GENERATION_SPEED)
+		end
+
+		-- Dirt layer
+		for d = 1, DEPTH_DIRT do
+			if not generating then break end
+			if totalBlocks >= MAX_BLOCKS then generating = false break end
+			local block = Instance.new("Part")
+			block.Size = BLOCK_SIZE
+			block.Anchored = true
+			block.CanCollide = true
+			block.CFrame = CFrame.new(pos - Vector3.new(0, d * SNAP, 0))
+			block.Name = "FlatBlock"
+			block.Parent = workspace
+			placedBlocks[#placedBlocks+1] = block
+			addTextures(block, TEXTURE_TOP, TEXTURE_SIDES, TEXTURE_BOTTOM)
+			totalBlocks += 1
+			wait(GENERATION_SPEED)
+		end
+
+		-- Stone layer
+		for d = DEPTH_DIRT+1, DEPTH_DIRT+DEPTH_STONE do
+			if not generating then break end
+			if totalBlocks >= MAX_BLOCKS then generating = false break end
+			local block = Instance.new("Part")
+			block.Size = BLOCK_SIZE
+			block.Anchored = true
+			block.CanCollide = true
+			block.CFrame = CFrame.new(pos - Vector3.new(0, d * SNAP, 0))
+			block.Name = "FlatBlock"
+			block.Parent = workspace
+			placedBlocks[#placedBlocks+1] = block
+			addTextures(block, TEXTURE_TOP_STONE, TEXTURE_SIDES_STONE, TEXTURE_BOTTOM_STONE)
+			totalBlocks += 1
+			wait(GENERATION_SPEED)
+		end
+
+		-- Bedrock layer
+		do
+			local d = DEPTH_DIRT+DEPTH_STONE+1
+			if not generating then break end
+			if totalBlocks >= MAX_BLOCKS then generating = false break end
+			local block = Instance.new("Part")
+			block.Size = BLOCK_SIZE
+			block.Anchored = true
+			block.CanCollide = true
+			block.CFrame = CFrame.new(pos - Vector3.new(0, d * SNAP, 0))
+			block.Name = "FlatBlock"
+			block.Parent = workspace
+			placedBlocks[#placedBlocks+1] = block
+			addTextures(block, TEXTURE_BOTTOM_BEDROCK, TEXTURE_BOTTOM_BEDROCK, TEXTURE_BOTTOM_BEDROCK)
+			totalBlocks += 1
+			wait(GENERATION_SPEED)
+		end
+
+		index += 1
+	end
+
+	button.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
+	button.Text = "Generate"
+end
+
+local function createGUI()
+	if PlayerGui:FindFirstChild("FlatGeneratorGUI") then
+		PlayerGui.FlatGeneratorGUI:Destroy()
+		task.wait(0.05)
+	end
+
+	local screenGui = Instance.new("ScreenGui")
+	screenGui.Name = "FlatGeneratorGUI"
+	screenGui.ResetOnSpawn = false
+	screenGui.IgnoreGuiInset = true
+	screenGui.Parent = PlayerGui
+
+	local mainFrame = Instance.new("Frame")
+	mainFrame.Size = UDim2.new(0, 220, 0, 300) -- MUCH SMALLER
+	mainFrame.Position = UDim2.new(0.5, -110, 0.5, -150)
+	mainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+	mainFrame.Active = true
+	mainFrame.Draggable = true
+	mainFrame.Parent = screenGui
+
+	local uicorner = Instance.new("UICorner")
+	uicorner.CornerRadius = UDim.new(0, 15)
+	uicorner.Parent = mainFrame
+
+	local uiGradient = Instance.new("UIGradient")
+	uiGradient.Color = ColorSequence.new{
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(40, 40, 40)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(70, 70, 70))
+	}
+	uiGradient.Rotation = 45
+	uiGradient.Parent = mainFrame
+
+	local title = Instance.new("TextLabel")
+	title.Size = UDim2.new(1, 0, 0, 30)
+	title.Position = UDim2.new(0, 0, 0, 0)
+	title.BackgroundTransparency = 1
+	title.Text = "🧱 Flat World Generator"
+	title.TextScaled = true
+	title.Font = Enum.Font.SourceSansBold
+	title.TextColor3 = Color3.fromRGB(255, 255, 255)
+	title.Parent = mainFrame
+
+	local generateButton = Instance.new("TextButton")
+	generateButton.Size = UDim2.new(0, 180, 0, 40)
+	generateButton.Position = UDim2.new(0, 20, 0, 50)
+	generateButton.Text = "Generate"
+	generateButton.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
+	generateButton.Font = Enum.Font.SourceSansBold
+	generateButton.TextSize = 16
+	generateButton.Parent = mainFrame
+	local generateUICorner = Instance.new("UICorner")
+	generateUICorner.CornerRadius = UDim.new(0, 15)
+	generateUICorner.Parent = generateButton
+
+	local clearButton = Instance.new("TextButton")
+	clearButton.Size = UDim2.new(0, 180, 0, 40)
+	clearButton.Position = UDim2.new(0, 20, 0, 100)
+	clearButton.Text = "Clear"
+	clearButton.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
+	clearButton.Font = Enum.Font.SourceSansBold
+	clearButton.TextSize = 16
+	clearButton.Parent = mainFrame
+	local clearUICorner = Instance.new("UICorner")
+	clearUICorner.CornerRadius = UDim.new(0, 15)
+	clearUICorner.Parent = clearButton
+
+	local dirtDepthBox = Instance.new("TextBox")
+	dirtDepthBox.Size = UDim2.new(0, 80, 0, 30)
+	dirtDepthBox.Position = UDim2.new(0, 20, 0, 150)
+	dirtDepthBox.PlaceholderText = "Dirt Depth"
+	dirtDepthBox.Text = tostring(DEPTH_DIRT)
+	dirtDepthBox.TextScaled = true
+	dirtDepthBox.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+	dirtDepthBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+	dirtDepthBox.Parent = mainFrame
+	local dirtUICorner = Instance.new("UICorner")
+	dirtUICorner.CornerRadius = UDim.new(0, 10)
+	dirtUICorner.Parent = dirtDepthBox
+
+	local stoneDepthBox = Instance.new("TextBox")
+	stoneDepthBox.Size = UDim2.new(0, 80, 0, 30)
+	stoneDepthBox.Position = UDim2.new(0, 120, 0, 150)
+	stoneDepthBox.PlaceholderText = "Stone Depth"
+	stoneDepthBox.Text = tostring(DEPTH_STONE)
+	stoneDepthBox.TextScaled = true
+	stoneDepthBox.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+	stoneDepthBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+	stoneDepthBox.Parent = mainFrame
+	local stoneUICorner = Instance.new("UICorner")
+	stoneUICorner.CornerRadius = UDim.new(0, 10)
+	stoneUICorner.Parent = stoneDepthBox
+
+	local speedBox = Instance.new("TextBox")
+	speedBox.Size = UDim2.new(0, 180, 0, 30)
+	speedBox.Position = UDim2.new(0, 20, 0, 200)
+	speedBox.PlaceholderText = "Blocks per 0.5s"
+	speedBox.Text = tostring(1/GENERATION_SPEED)
+	speedBox.TextScaled = true
+	speedBox.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+	speedBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+	speedBox.Parent = mainFrame
+	local speedUICorner = Instance.new("UICorner")
+	speedUICorner.CornerRadius = UDim.new(0, 10)
+	speedUICorner.Parent = speedBox
+
+	generateButton.MouseButton1Click:Connect(function()
+		DEPTH_DIRT = tonumber(dirtDepthBox.Text) or 3
+		DEPTH_STONE = tonumber(stoneDepthBox.Text) or 2
+		GENERATION_SPEED = 0.5 / (tonumber(speedBox.Text) or 50)
+		generating = not generating
+		if generating then
+			generateButton.BackgroundColor3 = Color3.fromRGB(255, 255, 0)
+			generateButton.Text = "Stop"
+			local rootPos = player.Character and player.Character:FindFirstChild("HumanoidRootPart") and player.Character.HumanoidRootPart.Position
+			if rootPos then
+				spawn(function()
+					generateFlatWorld(snapToGrid(rootPos), generateButton)
+				end)
+			end
+		else
+			generateButton.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
+			generateButton.Text = "Generate"
+		end
+	end)
+
+	clearButton.MouseButton1Click:Connect(function()
+		clearBlocks()
+		generating = false
+		generateButton.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
+		generateButton.Text = "Generate"
+	end)
+end
+
+createGUI()
