@@ -1,0 +1,88 @@
+-- Highlight System
+-- Highlights whatever you are looking at within 15 studs
+-- Shows player name if it is a player
+
+local RunService = game:GetService("RunService")
+local cam = workspace.CurrentCamera
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+
+local highlight = Instance.new("Highlight")
+highlight.FillTransparency = 1
+highlight.OutlineTransparency = 0.5
+highlight.Parent = workspace
+
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "PlayerHighlightGUI"
+screenGui.ResetOnSpawn = false
+screenGui.IgnoreGuiInset = true
+screenGui.Parent = player:WaitForChild("PlayerGui")
+
+local nameLabel = Instance.new("TextLabel")
+nameLabel.Size = UDim2.new(0, 200, 0, 30)
+nameLabel.BackgroundTransparency = 0.7
+nameLabel.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+nameLabel.TextColor3 = Color3.new(1, 1, 1)
+nameLabel.TextScaled = true
+nameLabel.Font = Enum.Font.Arcade
+nameLabel.Visible = false
+nameLabel.Parent = screenGui
+
+local currentTarget = nil
+local DISTANCE_LIMIT = 15
+
+local function updateHighlight()
+    local rayOrigin = cam.CFrame.Position
+    local rayDirection = cam.CFrame.LookVector * 100
+    local raycastParams = RaycastParams.new()
+    raycastParams.FilterDescendantsInstances = {player.Character}
+    raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
+
+    local raycastResult = workspace:Raycast(rayOrigin, rayDirection, raycastParams)
+
+    if raycastResult and raycastResult.Instance then
+        local target = raycastResult.Instance
+        local model = target:FindFirstAncestorOfClass("Model") or target
+
+        local targetPos = target.Position or (model.PrimaryPart and model.PrimaryPart.Position) or target.Position
+        local distance = (targetPos - player.Character.Head.Position).Magnitude
+
+        if distance <= DISTANCE_LIMIT then
+            highlight.Adornee = model
+            highlight.OutlineColor = Color3.new(1, 1, 1)
+            highlight.Enabled = true
+            currentTarget = model
+
+            local targetPlayer = Players:GetPlayerFromCharacter(model)
+            if targetPlayer then
+                highlight.OutlineColor = Color3.fromRGB(0, 255, 0)
+                nameLabel.Text = "@" .. targetPlayer.Name
+                nameLabel.Visible = true
+
+                local head = model:FindFirstChild("Head")
+                if head then
+                    local screenPos, onScreen = cam:WorldToViewportPoint(head.Position + Vector3.new(0, 1.5, 0))
+                    if onScreen then
+                        nameLabel.Position = UDim2.new(0, screenPos.X - nameLabel.Size.X.Offset / 2, 0, screenPos.Y)
+                    else
+                        nameLabel.Visible = false
+                    end
+                else
+                    nameLabel.Visible = false
+                end
+            else
+                nameLabel.Visible = false
+            end
+        else
+            highlight.Enabled = false
+            nameLabel.Visible = false
+            currentTarget = nil
+        end
+    else
+        highlight.Enabled = false
+        nameLabel.Visible = false
+        currentTarget = nil
+    end
+end
+
+RunService.RenderStepped:Connect(updateHighlight)
