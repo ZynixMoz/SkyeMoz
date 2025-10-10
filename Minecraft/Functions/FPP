@@ -1,0 +1,75 @@
+-- FullBodyFirstPerson_Final.lua
+-- Shows body in first person, hides head/accessories, moves camera slightly forward
+
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+
+local player = Players.LocalPlayer
+local FIRST_PERSON_DISTANCE = 1.5
+local CAMERA_FORWARD_OFFSET = 0.55 -- 🔥 move forward more (you can tweak 0.4–0.7)
+local VISIBLE_TRANSPARENCY = 0
+local HIDDEN_TRANSPARENCY = 1
+
+local function hideHeadAndAccessories(character, hide)
+	if not character then return end
+
+	local head = character:FindFirstChild("Head")
+	if head then
+		head.LocalTransparencyModifier = hide and HIDDEN_TRANSPARENCY or VISIBLE_TRANSPARENCY
+		local face = head:FindFirstChildWhichIsA("Decal")
+		if face then
+			face.Transparency = hide and 1 or 0
+		end
+	end
+
+	-- Hide hats, hair, etc.
+	for _, accessory in ipairs(character:GetChildren()) do
+		if accessory:IsA("Accessory") then
+			local handle = accessory:FindFirstChild("Handle")
+			if handle then
+				handle.LocalTransparencyModifier = hide and HIDDEN_TRANSPARENCY or VISIBLE_TRANSPARENCY
+			end
+		end
+	end
+end
+
+local function showBodyParts(character, show)
+	for _, part in ipairs(character:GetDescendants()) do
+		if part:IsA("BasePart") then
+			part.LocalTransparencyModifier = show and VISIBLE_TRANSPARENCY or HIDDEN_TRANSPARENCY
+		end
+	end
+end
+
+local function onCharacterAdded(character)
+	local head = character:WaitForChild("Head", 5)
+	local humanoid = character:WaitForChild("Humanoid", 5)
+	if not head or not humanoid then return end
+
+	RunService.RenderStepped:Connect(function()
+		if not character.Parent then return end
+
+		local camera = workspace.CurrentCamera
+		if not camera then return end
+
+		local dist = (camera.CFrame.Position - head.Position).Magnitude
+		local inFirstPerson = dist <= FIRST_PERSON_DISTANCE
+
+		if inFirstPerson then
+			showBodyParts(character, true)
+			hideHeadAndAccessories(character, true)
+			-- Smooth safe camera offset (no lock, Roblox-native)
+			humanoid.CameraOffset = Vector3.new(0, 0, -CAMERA_FORWARD_OFFSET)
+		else
+			showBodyParts(character, true)
+			hideHeadAndAccessories(character, false)
+			humanoid.CameraOffset = Vector3.zero
+		end
+	end)
+end
+
+if player.Character then
+	onCharacterAdded(player.Character)
+end
+
+player.CharacterAdded:Connect(onCharacterAdded)
