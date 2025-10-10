@@ -1,7 +1,4 @@
--- // 🧱 Oak Planks 🔥 by SkyeMoz + ZynixMoz (patched full)
--- FULL version: custom top/bottom/sides textures, sounds, tool icon, click delete fix
--- GUI: black glass buttons with icon textures + 2s hold protection
--- Notification removed
+-- // 🧱 Template Block🔥 by SkyeMoz + ZynixMoz (freeze removed clean full version)
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -16,7 +13,7 @@ local PlayerGui = player:WaitForChild("PlayerGui")
 local tool = Instance.new("Tool")
 tool.Name = "Block Placer"
 tool.RequiresHandle = false
-tool.TextureId = "rbxassetid://120849093264241" -- 🧰 tool icon
+tool.TextureId = "rbxassetid://00000000" -- 🧰 tool icon
 tool.Parent = player.Backpack
 
 -- SETTINGS --
@@ -24,19 +21,16 @@ local SNAP = 4
 local BLOCK_SIZE = Vector3.new(SNAP, SNAP, SNAP)
 local DEBOUNCE = 0.08
 
--- YOUR ASSET IDS (oak base kept)
-local TEXTURE_TOP = "rbxassetid://9359126646"
-local TEXTURE_SIDES = "rbxassetid://9359126646"
-local TEXTURE_BOTTOM = "rbxassetid://9359126646"
+-- YOUR ASSET IDS
+local TEXTURE_TOP = "rbxassetid://00000000"
+local TEXTURE_SIDES = "rbxassetid://00000000"
+local TEXTURE_BOTTOM = "rbxassetid://00000000"
+local PLACE_SOUND_ID = "rbxassetid://00000000"
+local DELETE_SOUND_ID = "rbxassetid://00000000"
 
-local PLACE_SOUND_ID = "rbxassetid://8394333801"
-local DELETE_SOUND_ID = "rbxassetid://108301528263788"
-
--- GUI ICON IDS (from your list)
+-- GUI ICON IDS (kept original)
 local ICON_PLACE = "rbxassetid://87182246412476"
 local ICON_BREAK = "rbxassetid://81586559343799"
-local ICON_FREEZE_ON = "rbxassetid://7062292586"
-local ICON_FREEZE_OFF = "rbxassetid://13369776137"
 local ICON_LOCK_ON = "rbxassetid://13967666260"
 local ICON_LOCK_OFF = "rbxassetid://13967667066"
 
@@ -44,9 +38,8 @@ local ICON_LOCK_OFF = "rbxassetid://13967667066"
 local lastPlaced = 0
 local previewBlock = nil
 local highlight = nil
-local placeButton, lockButton, deleteButton, freezeButton
+local placeButton, lockButton, deleteButton
 local lockMode = false
-local freezeMode = false
 local placedBlocks = {}
 
 -- Sounds
@@ -80,7 +73,7 @@ local function animatePlaceBlock(block)
 	tweenBlock(block, {Size = BLOCK_SIZE}, 0.1)
 end
 
--- Apply textures to top/bottom/sides separately
+-- Apply textures to top/bottom/sides
 local function addTextures(part)
 	local sides = {
 		Enum.NormalId.Front,
@@ -192,9 +185,8 @@ local function getLockRayOrigin()
 	return camera.CFrame.Position
 end
 
--- GUI Setup (black glass buttons with icons + 2s hold protection)
+-- GUI Setup
 local function createGUI()
-	-- cleanup
 	if PlayerGui:FindFirstChild("BlockPlacerGUI") then PlayerGui.BlockPlacerGUI:Destroy() end
 
 	local screenGui = Instance.new("ScreenGui")
@@ -203,7 +195,6 @@ local function createGUI()
 	screenGui.IgnoreGuiInset = true
 	screenGui.Parent = PlayerGui
 
-	-- helper to create image buttons (60x60), black bg, 0.3 transparency
 	local function makeIconButton(imageId, pos)
 		local btn = Instance.new("ImageButton")
 		btn.Size = UDim2.new(0, 60, 0, 60)
@@ -219,13 +210,10 @@ local function createGUI()
 		return btn
 	end
 
-	-- positions mimic your previous layout (2x2)
 	placeButton = makeIconButton(ICON_PLACE, UDim2.new(1, -90, 1, -180))
 	lockButton  = makeIconButton(ICON_LOCK_OFF, UDim2.new(1, -90, 1, -260))
 	deleteButton= makeIconButton(ICON_BREAK, UDim2.new(1, -180, 1, -180))
-	freezeButton= makeIconButton(ICON_FREEZE_OFF, UDim2.new(1, -180, 1, -260))
 
-	-- Hold protection utility (2s hold = ignore)
 	local function setupHoldProtection(button, callback)
 		local pressTime
 		button.InputBegan:Connect(function(input)
@@ -237,7 +225,6 @@ local function createGUI()
 			if not pressTime then return end
 			if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 				if tick() - pressTime < 2 then
-					-- short click -> run
 					pcall(callback)
 				end
 				pressTime = nil
@@ -245,10 +232,7 @@ local function createGUI()
 		end)
 	end
 
-	-- Place
 	setupHoldProtection(placeButton, function()
-		-- if lock mode, use lock ray; else prefer previewBlock
-		if freezeMode then return end
 		local targetPos
 		if lockMode then
 			local rayOrigin = getLockRayOrigin()
@@ -269,9 +253,7 @@ local function createGUI()
 		if targetPos then placeBlockAtPosition(targetPos) end
 	end)
 
-	-- Delete
 	setupHoldProtection(deleteButton, function()
-		if freezeMode then return end
 		local targetPos
 		if lockMode then
 			local rayOrigin = getLockRayOrigin()
@@ -288,37 +270,20 @@ local function createGUI()
 		if targetPos then deleteBlockAtPosition(targetPos) end
 	end)
 
-	-- Freeze toggle
-	setupHoldProtection(freezeButton, function()
-		freezeMode = not freezeMode
-		freezeButton.Image = freezeMode and ICON_FREEZE_ON or ICON_FREEZE_OFF
-	end)
-
-	-- Lock toggle
 	setupHoldProtection(lockButton, function()
 		lockMode = not lockMode
 		lockButton.Image = lockMode and ICON_LOCK_ON or ICON_LOCK_OFF
 	end)
 end
 
--- Equip-only click handlers (solves deletion while unequipped)
-local equipDeleteConn = nil
-local equipPlaceConn = nil
-local equipShiftConn = nil
-local equipCtrlConn = nil
+-- Equip click handlers
+local equipDeleteConn, equipPlaceConn, equipCtrlConn
 
 local function enableEquipClickHandlers()
-	-- clean old
-	if equipDeleteConn then equipDeleteConn:Disconnect() equipDeleteConn = nil end
-	if equipPlaceConn then equipPlaceConn:Disconnect() equipPlaceConn = nil end
-	if equipShiftConn then equipShiftConn:Disconnect() equipShiftConn = nil end
-	if equipCtrlConn then equipCtrlConn:Disconnect() equipCtrlConn = nil end
-
 	local m = player:GetMouse()
 
-	-- Left click delete on clicked block (only while equipped)
 	equipDeleteConn = m.Button1Down:Connect(function()
-		if freezeMode or lockMode then return end
+		if lockMode then return end
 		if UserInputService:GetFocusedTextBox() then return end
 		local target = m.Target
 		if not target then return end
@@ -334,9 +299,7 @@ local function enableEquipClickHandlers()
 		end
 	end)
 
-	-- Right click placement (works with lock mode)
 	equipPlaceConn = m.Button2Down:Connect(function()
-		if freezeMode then return end
 		local targetPos
 		if lockMode then
 			local rayOrigin = getLockRayOrigin()
@@ -356,15 +319,6 @@ local function enableEquipClickHandlers()
 		if targetPos then placeBlockAtPosition(targetPos) end
 	end)
 
-	-- Keybinds while equipped (Shift = Freeze, Ctrl = Lock) and update GUI icons if present
-	equipShiftConn = UserInputService.InputBegan:Connect(function(input, gpe)
-		if gpe then return end
-		if input.KeyCode == Enum.KeyCode.LeftShift then
-			freezeMode = not freezeMode
-			if freezeButton then freezeButton.Image = freezeMode and ICON_FREEZE_ON or ICON_FREEZE_OFF end
-		end
-	end)
-
 	equipCtrlConn = UserInputService.InputBegan:Connect(function(input, gpe)
 		if gpe then return end
 		if input.KeyCode == Enum.KeyCode.LeftControl then
@@ -375,15 +329,13 @@ local function enableEquipClickHandlers()
 end
 
 local function disableEquipClickHandlers()
-	if equipDeleteConn then equipDeleteConn:Disconnect() equipDeleteConn = nil end
-	if equipPlaceConn then equipPlaceConn:Disconnect() equipPlaceConn = nil end
-	if equipShiftConn then equipShiftConn:Disconnect() equipShiftConn = nil end
-	if equipCtrlConn then equipCtrlConn:Disconnect() equipCtrlConn = nil end
+	if equipDeleteConn then equipDeleteConn:Disconnect() end
+	if equipPlaceConn then equipPlaceConn:Disconnect() end
+	if equipCtrlConn then equipCtrlConn:Disconnect() end
 end
 
--- Live preview update
 RunService.RenderStepped:Connect(function()
-	if not previewBlock or freezeMode then return end
+	if not previewBlock then return end
 	local targetPos
 	if lockMode then
 		local rayOrigin = getLockRayOrigin()
@@ -414,7 +366,6 @@ RunService.RenderStepped:Connect(function()
 	end
 end)
 
--- Tool equipped/unequipped
 tool.Equipped:Connect(function()
 	makePreview()
 	createGUI()
@@ -426,5 +377,3 @@ tool.Unequipped:Connect(function()
 	if PlayerGui:FindFirstChild("BlockPlacerGUI") then PlayerGui.BlockPlacerGUI:Destroy() end
 	disableEquipClickHandlers()
 end)
-
--- end of script
