@@ -1,5 +1,4 @@
--- // 🧱 Block Placer v22 🔥 by Zynix
--- FULL version: custom top/bottom/sides textures, sounds, tool icon, click delete fix
+-- // 🧱 Grass Block🔥 by SkyeMoz + ZynixMoz (freeze removed clean full version)
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -14,7 +13,7 @@ local PlayerGui = player:WaitForChild("PlayerGui")
 local tool = Instance.new("Tool")
 tool.Name = "Block Placer"
 tool.RequiresHandle = false
-tool.TextureId = "rbxassetid://104738885653882" -- 🧰 tool icon
+tool.TextureId = "rbxassetid://100389947609805" -- 🧰 tool icon
 tool.Parent = player.Backpack
 
 -- SETTINGS --
@@ -22,21 +21,25 @@ local SNAP = 4
 local BLOCK_SIZE = Vector3.new(SNAP, SNAP, SNAP)
 local DEBOUNCE = 0.08
 
--- YOUR ASSET IDS --
+-- YOUR ASSET IDS
 local TEXTURE_TOP = "rbxassetid://9267183930"
 local TEXTURE_SIDES = "rbxassetid://9267155972"
 local TEXTURE_BOTTOM = "rbxassetid://7901287342"
+local PLACE_SOUND_ID = "rbxassetid://00000000"
+local DELETE_SOUND_ID = "rbxassetid://00000000"
 
-local PLACE_SOUND_ID = "rbxassetid://137891923918460"
-local DELETE_SOUND_ID = "rbxassetid://137891923918460"
+-- GUI ICON IDS (kept original)
+local ICON_PLACE = "rbxassetid://87182246412476"
+local ICON_BREAK = "rbxassetid://81586559343799"
+local ICON_LOCK_ON = "rbxassetid://13967666260"
+local ICON_LOCK_OFF = "rbxassetid://13967667066"
 
 -- GLOBALS --
 local lastPlaced = 0
 local previewBlock = nil
 local highlight = nil
-local placeButton, lockButton, deleteButton, freezeButton
+local placeButton, lockButton, deleteButton
 local lockMode = false
-local freezeMode = false
 local placedBlocks = {}
 
 -- Sounds
@@ -50,7 +53,7 @@ deleteSound.SoundId = DELETE_SOUND_ID
 deleteSound.Volume = 1
 deleteSound.Parent = PlayerGui
 
--- HELPERS --
+-- Helpers --
 local function snapToGrid(pos)
 	local function s(v) return math.floor(v / SNAP + 0.5) * SNAP end
 	return Vector3.new(s(pos.X), s(pos.Y), s(pos.Z))
@@ -63,14 +66,14 @@ local function tweenBlock(block, goalProps, time)
 end
 
 local function animatePlaceBlock(block)
-	block.Transparency = 1
+	block.Transparency = 0.3
 	tweenBlock(block, {Transparency = 0}, 0.2)
 	tweenBlock(block, {Size = BLOCK_SIZE * 1.2}, 0.2)
 	task.wait(0.2)
 	tweenBlock(block, {Size = BLOCK_SIZE}, 0.1)
 end
 
--- Apply textures to top/bottom/sides separately
+-- Apply textures to top/bottom/sides
 local function addTextures(part)
 	local sides = {
 		Enum.NormalId.Front,
@@ -104,6 +107,7 @@ end
 
 -- Place Block
 local function placeBlockAtPosition(worldPos)
+	if not worldPos then return end
 	if tick() - lastPlaced < DEBOUNCE then return end
 	lastPlaced = tick()
 	local center = snapToGrid(worldPos)
@@ -122,7 +126,7 @@ local function placeBlockAtPosition(worldPos)
 	block.Name = "ClientBlock"
 	block.Parent = workspace
 	table.insert(placedBlocks, block)
-
+	block.Transparency = 0.3
 	addTextures(block)
 	placeSound:Play()
 	animatePlaceBlock(block)
@@ -130,6 +134,7 @@ end
 
 -- Delete nearest block
 local function deleteBlockAtPosition(worldPos)
+	if not worldPos then return end
 	local nearestBlock, nearestDist, nearestIdx
 	for i, block in ipairs(placedBlocks) do
 		local dist = (block.Position - worldPos).Magnitude
@@ -139,7 +144,7 @@ local function deleteBlockAtPosition(worldPos)
 			nearestIdx = i
 		end
 	end
-	if nearestBlock and nearestDist < SNAP then
+	if nearestBlock and nearestDist and nearestDist < SNAP then
 		table.remove(placedBlocks, nearestIdx)
 		deleteSound:Play()
 		nearestBlock:Destroy()
@@ -187,18 +192,17 @@ local function createGUI()
 	local screenGui = Instance.new("ScreenGui")
 	screenGui.Name = "BlockPlacerGUI"
 	screenGui.ResetOnSpawn = false
+	screenGui.IgnoreGuiInset = true
 	screenGui.Parent = PlayerGui
 
-	local function makeButton(text, color, pos)
-		local btn = Instance.new("TextButton")
+	local function makeIconButton(imageId, pos)
+		local btn = Instance.new("ImageButton")
 		btn.Size = UDim2.new(0, 60, 0, 60)
 		btn.Position = pos
-		btn.BackgroundColor3 = color
+		btn.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 		btn.BackgroundTransparency = 0.3
-		btn.Text = text
-		btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-		btn.Font = Enum.Font.GothamBold
-		btn.TextScaled = true
+		btn.Image = imageId
+		btn.ScaleType = Enum.ScaleType.Fit
 		btn.Parent = screenGui
 		local corner = Instance.new("UICorner")
 		corner.CornerRadius = UDim.new(1, 0)
@@ -206,84 +210,132 @@ local function createGUI()
 		return btn
 	end
 
-	placeButton = makeButton("PLACE", Color3.fromRGB(0, 255, 0), UDim2.new(1, -90, 1, -180))
-	lockButton = makeButton("LOCK", Color3.fromRGB(255, 255, 0), UDim2.new(1, -90, 1, -260))
-	deleteButton = makeButton("DELETE", Color3.fromRGB(255, 0, 0), UDim2.new(1, -180, 1, -180))
-	freezeButton = makeButton("FREEZE", Color3.fromRGB(0, 0, 255), UDim2.new(1, -180, 1, -260))
+	placeButton = makeIconButton(ICON_PLACE, UDim2.new(1, -90, 1, -180))
+	lockButton  = makeIconButton(ICON_LOCK_OFF, UDim2.new(1, -90, 1, -260))
+	deleteButton= makeIconButton(ICON_BREAK, UDim2.new(1, -180, 1, -180))
 
-	lockButton.MouseButton1Click:Connect(function()
-		lockMode = not lockMode
-		lockButton.BackgroundColor3 = lockMode and Color3.fromRGB(0, 255, 255) or Color3.fromRGB(255, 255, 0)
-		lockButton.Text = lockMode and "LOCKED" or "LOCK"
-	end)
+	local function setupHoldProtection(button, callback)
+		local pressTime
+		button.InputBegan:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+				pressTime = tick()
+			end
+		end)
+		button.InputEnded:Connect(function(input)
+			if not pressTime then return end
+			if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+				if tick() - pressTime < 2 then
+					pcall(callback)
+				end
+				pressTime = nil
+			end
+		end)
+	end
 
-	freezeButton.MouseButton1Click:Connect(function()
-		freezeMode = not freezeMode
-		freezeButton.BackgroundColor3 = freezeMode and Color3.fromRGB(0, 255, 255) or Color3.fromRGB(0, 0, 255)
-		freezeButton.Text = freezeMode and "FREEZING" or "FREEZE"
-	end)
-
-	placeButton.MouseButton1Click:Connect(function()
-		if previewBlock and not freezeMode then
-			placeBlockAtPosition(previewBlock.Position)
-		end
-	end)
-
-	deleteButton.MouseButton1Click:Connect(function()
+	setupHoldProtection(placeButton, function()
 		local targetPos
 		if lockMode then
 			local rayOrigin = getLockRayOrigin()
 			local rayDirection = camera.CFrame.LookVector * 100
-			local raycastParams = RaycastParams.new()
-			raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
-			raycastParams.FilterDescendantsInstances = {player.Character, previewBlock}
-			local result = workspace:Raycast(rayOrigin, rayDirection, raycastParams)
+			local params = RaycastParams.new()
+			params.FilterType = Enum.RaycastFilterType.Blacklist
+			params.FilterDescendantsInstances = {player.Character, previewBlock}
+			local result = workspace:Raycast(rayOrigin, rayDirection, params)
 			targetPos = result and result.Position or (rayOrigin + rayDirection)
 		else
-			local mouse = player:GetMouse()
-			if mouse and mouse.Hit then
-				targetPos = mouse.Hit.p
+			if previewBlock then
+				targetPos = previewBlock.Position
+			else
+				local m = player:GetMouse()
+				if m and m.Hit then targetPos = m.Hit.p end
 			end
 		end
-		if targetPos then
-			deleteBlockAtPosition(targetPos)
+		if targetPos then placeBlockAtPosition(targetPos) end
+	end)
+
+	setupHoldProtection(deleteButton, function()
+		local targetPos
+		if lockMode then
+			local rayOrigin = getLockRayOrigin()
+			local rayDirection = camera.CFrame.LookVector * 100
+			local params = RaycastParams.new()
+			params.FilterType = Enum.RaycastFilterType.Blacklist
+			params.FilterDescendantsInstances = {player.Character, previewBlock}
+			local result = workspace:Raycast(rayOrigin, rayDirection, params)
+			targetPos = result and result.Position or (rayOrigin + rayDirection)
+		else
+			local m = player:GetMouse()
+			if m and m.Hit then targetPos = m.Hit.p end
 		end
+		if targetPos then deleteBlockAtPosition(targetPos) end
+	end)
+
+	setupHoldProtection(lockButton, function()
+		lockMode = not lockMode
+		lockButton.Image = lockMode and ICON_LOCK_ON or ICON_LOCK_OFF
 	end)
 end
 
--- Client-side delete by click
-local mouse = player:GetMouse()
-local mouseDownConn = nil
+-- Equip click handlers
+local equipDeleteConn, equipPlaceConn, equipCtrlConn
 
-local function enableClientClickDelete()
-	if mouseDownConn then return end
-	mouseDownConn = mouse.Button1Down:Connect(function()
+local function enableEquipClickHandlers()
+	local m = player:GetMouse()
+
+	equipDeleteConn = m.Button1Down:Connect(function()
+		if lockMode then return end
 		if UserInputService:GetFocusedTextBox() then return end
-		local target = mouse.Target
+		local target = m.Target
 		if not target then return end
-
 		for i = 1, #placedBlocks do
 			local block = placedBlocks[i]
 			if block and (target == block or target:IsDescendantOf(block)) then
-				table.remove(placedBlocks, i)
 				deleteSound:Play()
+				task.wait(deleteSound.TimeLength)
 				block:Destroy()
+				table.remove(placedBlocks, i)
 				return
 			end
 		end
 	end)
+
+	equipPlaceConn = m.Button2Down:Connect(function()
+		local targetPos
+		if lockMode then
+			local rayOrigin = getLockRayOrigin()
+			local rayDirection = camera.CFrame.LookVector * 100
+			local params = RaycastParams.new()
+			params.FilterType = Enum.RaycastFilterType.Blacklist
+			params.FilterDescendantsInstances = {player.Character, previewBlock}
+			local result = workspace:Raycast(rayOrigin, rayDirection, params)
+			targetPos = result and result.Position or (rayOrigin + rayDirection)
+		else
+			if previewBlock then
+				targetPos = previewBlock.Position
+			else
+				if m and m.Hit then targetPos = m.Hit.p end
+			end
+		end
+		if targetPos then placeBlockAtPosition(targetPos) end
+	end)
+
+	equipCtrlConn = UserInputService.InputBegan:Connect(function(input, gpe)
+		if gpe then return end
+		if input.KeyCode == Enum.KeyCode.LeftControl then
+			lockMode = not lockMode
+			if lockButton then lockButton.Image = lockMode and ICON_LOCK_ON or ICON_LOCK_OFF end
+		end
+	end)
 end
 
-local function disableClientClickDelete()
-	if mouseDownConn then
-		mouseDownConn:Disconnect()
-		mouseDownConn = nil
-	end
+local function disableEquipClickHandlers()
+	if equipDeleteConn then equipDeleteConn:Disconnect() end
+	if equipPlaceConn then equipPlaceConn:Disconnect() end
+	if equipCtrlConn then equipCtrlConn:Disconnect() end
 end
 
--- LIVE UPDATER --
 RunService.RenderStepped:Connect(function()
-	if not previewBlock or freezeMode then return end
+	if not previewBlock then return end
 	local targetPos
 	if lockMode then
 		local rayOrigin = getLockRayOrigin()
@@ -295,9 +347,7 @@ RunService.RenderStepped:Connect(function()
 		targetPos = result and result.Position or (rayOrigin + rayDirection)
 	else
 		local m = player:GetMouse()
-		if m and m.Hit then
-			targetPos = m.Hit.p
-		end
+		if m and m.Hit then targetPos = m.Hit.p end
 	end
 	if targetPos then
 		local pos = snapToGrid(targetPos)
@@ -319,62 +369,11 @@ end)
 tool.Equipped:Connect(function()
 	makePreview()
 	createGUI()
-	enableClientClickDelete()
+	enableEquipClickHandlers()
 end)
 
 tool.Unequipped:Connect(function()
 	removePreview()
 	if PlayerGui:FindFirstChild("BlockPlacerGUI") then PlayerGui.BlockPlacerGUI:Destroy() end
-	disableClientClickDelete()
-end)
-
-game.StarterGui:SetCore("SendNotification", {
-	Title = "Zynix’s Block Placer v22";
-	Text = "Custom textures + sounds + icon!";
-	Duration = 5;
-})
--- // 🖱️ PC Controls (for Block Placer v22) \\ --
-local UIS = game:GetService("UserInputService")
-local mouse = player:GetMouse()
-
--- Left click = Delete
-mouse.Button1Down:Connect(function()
-	if freezeMode or lockMode then return end
-	local target = mouse.Target
-	if not target then return end
-	for i, block in ipairs(placedBlocks) do
-		if block == target or target:IsDescendantOf(block) then
-			deleteSound:Play()
-			task.wait(deleteSound.TimeLength)
-			block:Destroy()
-			table.remove(placedBlocks, i)
-			break
-		end
-	end
-end)
-
--- Right click = Place
-mouse.Button2Down:Connect(function()
-	if freezeMode or lockMode then return end
-	if previewBlock then
-		placeBlockAtPosition(previewBlock.Position)
-	end
-end)
-
--- Shift = Freeze toggle
-UIS.InputBegan:Connect(function(input, gpe)
-	if gpe then return end
-	if input.KeyCode == Enum.KeyCode.LeftShift then
-		freezeMode = not freezeMode
-		print("Freeze:", freezeMode)
-	end
-end)
-
--- Ctrl = Lock toggle
-UIS.InputBegan:Connect(function(input, gpe)
-	if gpe then return end
-	if input.KeyCode == Enum.KeyCode.LeftControl then
-		lockMode = not lockMode
-		print("Lock:", lockMode)
-	end
+	disableEquipClickHandlers()
 end)
