@@ -1,0 +1,116 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+
+local crouchToggle = false
+local crouchHeight = 1.5
+local normalHeight = humanoid.HipHeight
+
+local invisibleWall
+local wallExists = false
+
+-- Create UI
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "CrouchUI"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = playerGui
+
+local crouchButton = Instance.new("ImageButton")
+crouchButton.Size = UDim2.new(0, 60, 0, 60)
+crouchButton.Position = UDim2.new(0.9, -120, 0.9, -60) -- moved more left
+crouchButton.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+crouchButton.BackgroundTransparency = 0.3
+crouchButton.BorderSizePixel = 0
+crouchButton.Image = "rbxassetid://18256199240" -- crouch icon
+crouchButton.AutoButtonColor = true
+crouchButton.Parent = screenGui
+crouchButton.ZIndex = 10
+
+local circle = Instance.new("UICorner")
+circle.CornerRadius = UDim.new(0.5, 0)
+circle.Parent = crouchButton
+
+-- Toggle crouch
+crouchButton.MouseButton1Click:Connect(function()
+	crouchToggle = not crouchToggle
+	if crouchToggle then
+		humanoid.HipHeight = crouchHeight
+		crouchButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+	else
+		humanoid.HipHeight = normalHeight
+		crouchButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+		if invisibleWall then
+			invisibleWall:Destroy()
+			invisibleWall = nil
+			wallExists = false
+		end
+	end
+end)
+
+-- Function to check edge and place wall
+local function checkEdgeAndPlaceWall()
+	if not crouchToggle or not character or not character:FindFirstChild("HumanoidRootPart") then
+		if invisibleWall then
+			invisibleWall:Destroy()
+			invisibleWall = nil
+			wallExists = false
+		end
+		return
+	end
+
+	local rootPart = character.HumanoidRootPart
+	local checkDistance = 2
+
+	local rayOrigin = rootPart.Position + Vector3.new(0, -0.5, 0)
+	local rayDirection = rootPart.CFrame.LookVector * checkDistance - Vector3.new(0, 4, 0)
+
+	local raycastParams = RaycastParams.new()
+	raycastParams.FilterDescendantsInstances = {character}
+	raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
+
+	local ray = workspace:Raycast(rayOrigin, rayDirection, raycastParams)
+
+	if not ray then
+		if not wallExists then
+			-- Create invisible wall only once
+			invisibleWall = Instance.new("Part")
+			invisibleWall.Size = Vector3.new(4, 4, 0.5)
+			invisibleWall.Transparency = 1
+			invisibleWall.Anchored = true
+			invisibleWall.CanCollide = true
+			invisibleWall.Parent = workspace
+			wallExists = true
+		end
+
+		-- Update wall position smoothly
+		local targetPos = rootPart.Position + rootPart.CFrame.LookVector * checkDistance
+		invisibleWall.CFrame = CFrame.new(targetPos.X, rootPart.Position.Y, targetPos.Z)
+	elseif wallExists then
+		invisibleWall:Destroy()
+		invisibleWall = nil
+		wallExists = false
+	end
+end
+
+-- Check every 0.1 seconds instead of every frame to avoid physics spam
+while true do
+	checkEdgeAndPlaceWall()
+	task.wait(0.1)
+end
+
+-- Reset on respawn
+player.CharacterAdded:Connect(function(char)
+	character = char
+	humanoid = char:WaitForChild("Humanoid")
+	normalHeight = humanoid.HipHeight
+	if invisibleWall then
+		invisibleWall:Destroy()
+		invisibleWall = nil
+		wallExists = false
+	end
+end)
