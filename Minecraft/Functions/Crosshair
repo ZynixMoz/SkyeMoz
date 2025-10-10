@@ -1,0 +1,54 @@
+--[[
+    CrosshairM System
+    Displays a "+" exactly in the middle of the screen
+    Matches positioning style from your previous script
+]]
+
+local settings = {
+    color = Color3.fromRGB(255, 255, 255), -- Crosshair color
+    size = 16,                              -- Crosshair text size
+    recenter = true,                       -- Auto-adjust on resize
+    x_offset = 0,                           -- Horizontal offset
+    y_offset = 0                            -- Vertical offset
+}
+
+-- Services
+local RunService = game:GetService("RunService")
+local cam = workspace.CurrentCamera or workspace:FindFirstChildOfClass("Camera")
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+
+-- Create crosshair
+local crosshair = Drawing.new("Text")
+crosshair.Text = "+"
+crosshair.Size = settings.size
+crosshair.Color = settings.color
+crosshair.Center = true
+crosshair.Visible = true
+
+-- Update crosshair position
+local function updateCrosshair()
+    local centerX = (cam.ViewportSize.X / 2) + settings.x_offset
+    local centerY = (cam.ViewportSize.Y / 2) + settings.y_offset
+    crosshair.Position = Vector2.new(centerX, centerY)
+end
+
+-- Initialize
+updateCrosshair()
+
+-- Auto-recenter
+if settings.recenter then
+    table.insert(settings, cam:GetPropertyChangedSignal("ViewportSize"):Connect(updateCrosshair))
+    RunService.RenderStepped:Connect(updateCrosshair)
+end
+
+-- Cleanup function (prevents memory leaks)
+local function cleanup()
+    if crosshair then
+        crosshair:Remove()
+    end
+end
+
+-- Cleanup on player leave or game close
+table.insert(settings, player.CharacterRemoving:Connect(cleanup))
+table.insert(settings, game:BindToClose(cleanup))
