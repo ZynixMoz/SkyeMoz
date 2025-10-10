@@ -113,7 +113,7 @@ local ground = {
     {Name = "Dirt", Link = "https://raw.githubusercontent.com/ZynixMoz/SkyeMoz/refs/heads/main/Minecraft/Blocks/Nature/Dirt"},
     {Name = "Grass", Link = "https://raw.githubusercontent.com/ZynixMoz/SkyeMoz/refs/heads/main/Minecraft/Blocks/Nature/Grass"},
     {Name = "Stone Block", Link = "https://raw.githubusercontent.com/ZynixMoz/SkyeMoz/refs/heads/main/Minecraft/Blocks/Nature/Stone%20Block"}
-    {Name = "Flat Map", Link = " https://raw.githubusercontent.com/ZynixMoz/SkyeMoz/refs/heads/main/Minecraft/Functions/Guis/MapGenerator"}
+    {Name = "Flat Map", Link = "https://raw.githubusercontent.com/ZynixMoz/SkyeMoz/refs/heads/main/Minecraft/Functions/Guis/MapGenerator"}
 }
 for _, g in ipairs(ground) do
     CreateButton(GroundTab, g.Name, g.Link)
