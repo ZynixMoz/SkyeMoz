@@ -1,4 +1,4 @@
--- // 🧱 Dirt Block🔥 by SkyeMoz + ZynixMoz (freeze removed clean full version + smooth gui + tweened preview + select mode + player-safe preview + raycast fix)
+-- // 🧱 Oak Block🔥 by SkyeMoz + ZynixMoz (freeze removed clean full version + smooth gui + tweened preview + select mode + player-safe preview + raycast fix)
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -13,7 +13,7 @@ local PlayerGui = player:WaitForChild("PlayerGui")
 local tool = Instance.new("Tool")
 tool.Name = "Block Placer"
 tool.RequiresHandle = false
-tool.TextureId = "rbxassetid://88976806459585"
+tool.TextureId = "rbxassetid://8082869288"
 tool.Parent = player.Backpack
 
 -- SETTINGS --
@@ -22,11 +22,11 @@ local BLOCK_SIZE = Vector3.new(SNAP, SNAP, SNAP)
 local DEBOUNCE = 0.08
 
 -- YOUR ASSET IDS
-local TEXTURE_TOP = "rbxassetid://135181604249180"
-local TEXTURE_SIDES = "rbxassetid://135181604249180"
-local TEXTURE_BOTTOM = "rbxassetid://135181604249180"
-local PLACE_SOUND_ID = "rbxassetid://6240702531"
-local DELETE_SOUND_ID = "rbxassetid://6240702531"
+local TEXTURE_TOP = "rbxassetid://9359126646"
+local TEXTURE_SIDES = "rbxassetid://9359126646"
+local TEXTURE_BOTTOM = "rbxassetid://9359126646"
+local PLACE_SOUND_ID = "rbxassetid://177172187"
+local DELETE_SOUND_ID = "rbxassetid://177172187"
 
 -- GUI ICON IDS
 local ICON_PLACE = "rbxassetid://87182246412476"
