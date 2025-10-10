@@ -1,0 +1,172 @@
+-- Delete Tool (R15 + R6 smooth animation fix)
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local cam = workspace.CurrentCamera
+local player = Players.LocalPlayer
+local PlayerGui = player:WaitForChild("PlayerGui")
+
+local tool = Instance.new("Tool")
+tool.Name = "Pickaxe"
+tool.RequiresHandle = true
+tool.CanBeDropped = false
+tool.TextureId = "rbxassetid://16958107171"
+tool.Parent = player.Backpack
+
+-- Create handle
+local handle = Instance.new("Part")
+handle.Name = "Handle"
+handle.Size = Vector3.new(1, 1, 1)
+handle.Transparency = 0
+handle.Anchored = false
+handle.CanCollide = false
+handle.Parent = tool
+
+-- Add mesh
+local mesh = Instance.new("SpecialMesh")
+mesh.MeshType = Enum.MeshType.FileMesh
+mesh.MeshId = "rbxassetid://17288777563"
+mesh.TextureId = "rbxassetid://17288777518"
+mesh.Scale = Vector3.new(0.5, 0.5, 0.5)
+mesh.Parent = handle
+
+local ICON_BREAK = "rbxassetid://81586559343799"
+
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "DeleteToolGUI"
+screenGui.ResetOnSpawn = false
+screenGui.IgnoreGuiInset = true
+screenGui.Parent = PlayerGui
+
+local function makeIconButton(imageId, pos)
+    local btn = Instance.new("ImageButton")
+    btn.Size = UDim2.new(0, 60, 0, 60)
+    btn.Position = pos
+    btn.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    btn.BackgroundTransparency = 0.3
+    btn.Image = imageId
+    btn.ScaleType = Enum.ScaleType.Fit
+    btn.Parent = screenGui
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(1, 0)
+    corner.Parent = btn
+    return btn
+end
+
+local deleteButton = makeIconButton(ICON_BREAK, UDim2.new(1, -180, 1, -180))
+
+local DISTANCE_LIMIT = 15
+local shoulderMotor
+local handleWeld
+local defaultC0
+
+-- Find right shoulder motor for R15 or R6
+local function findRightShoulderMotor(character)
+    if not character then return nil end
+    for _, obj in ipairs(character:GetDescendants()) do
+        if obj:IsA("Motor6D") then
+            local n = obj.Name:lower()
+            if n:find("rightshoulder") or n:find("right shoulder") then
+                return obj
+            end
+        end
+    end
+    return nil
+end
+
+-- Animate arm up then back down smoothly
+local function playArmAnimation()
+    local character = player.Character
+    if not character then return end
+    shoulderMotor = shoulderMotor or findRightShoulderMotor(character)
+    local motor = shoulderMotor
+    local weld = handleWeld
+    if not motor then return end
+
+    local tweenInfoUp = TweenInfo.new(0.15, Enum.EasingStyle.Sine, Enum.EasingDirection.Out)
+    local tweenInfoDown = TweenInfo.new(0.18, Enum.EasingStyle.Sine, Enum.EasingDirection.In)
+
+    local upC0 = defaultC0 * CFrame.Angles(math.rad(-25), 0, 0) * CFrame.new(0, 0.05, 0)
+    local upTween = TweenService:Create(motor, tweenInfoUp, {C0 = upC0})
+    local downTween = TweenService:Create(motor, tweenInfoDown, {C0 = defaultC0})
+
+    upTween:Play()
+    upTween.Completed:Wait()
+    downTween:Play()
+
+    if weld then
+        local orig = weld.C0
+        local up = orig * CFrame.new(0, 0.08, 0) * CFrame.Angles(math.rad(-10), 0, 0)
+        local upTw = TweenService:Create(weld, tweenInfoUp, {C0 = up})
+        local downTw = TweenService:Create(weld, tweenInfoDown, {C0 = orig})
+        upTw:Play()
+        upTw.Completed:Wait()
+        downTw:Play()
+    end
+end
+
+local function deleteTarget()
+    local rayOrigin = cam.CFrame.Position
+    local rayDirection = cam.CFrame.LookVector * 100
+    local raycastParams = RaycastParams.new()
+    raycastParams.FilterDescendantsInstances = {player.Character}
+    raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
+
+    local raycastResult = workspace:Raycast(rayOrigin, rayDirection, raycastParams)
+    if not raycastResult then return end
+
+    local target = raycastResult.Instance
+    if not target or not target:IsA("BasePart") then return end
+
+    local head = player.Character and (player.Character:FindFirstChild("Head") or player.Character:FindFirstChild("head"))
+    if not head then return end
+
+    local distance = (raycastResult.Position - head.Position).Magnitude
+    if distance > DISTANCE_LIMIT then return end
+
+    local deleteSoundId = target:FindFirstChild("PlaceSoundId")
+    local sound = Instance.new("Sound")
+    if deleteSoundId and deleteSoundId:IsA("StringValue") then
+        sound.SoundId = deleteSoundId.Value
+    else
+        sound.SoundId = "rbxassetid://535716488"
+    end
+    sound.Volume = 1
+    sound.Parent = workspace
+    sound:Play()
+
+    target:Destroy()
+    playArmAnimation()
+end
+
+deleteButton.MouseButton1Click:Connect(deleteTarget)
+
+tool.Equipped:Connect(function()
+    screenGui.Enabled = true
+    local character = player.Character
+    if not character then return end
+
+    shoulderMotor = findRightShoulderMotor(character)
+    if not shoulderMotor then return end
+    defaultC0 = shoulderMotor.C0
+
+    local rightHand = character:FindFirstChild("RightHand") or character:FindFirstChild("Right Arm")
+    if rightHand then
+        handleWeld = Instance.new("Weld")
+        handleWeld.Part0 = rightHand
+        handleWeld.Part1 = handle
+        handleWeld.C0 = CFrame.Angles(0, math.rad(-90), 0)
+        handleWeld.Parent = handle
+    end
+end)
+
+tool.Unequipped:Connect(function()
+    screenGui.Enabled = false
+    if shoulderMotor and defaultC0 then
+        local tweenReset = TweenService:Create(shoulderMotor, TweenInfo.new(0.2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {C0 = defaultC0})
+        tweenReset:Play()
+    end
+    if handleWeld and handleWeld.Parent then
+        handleWeld:Destroy()
+    end
+end)
