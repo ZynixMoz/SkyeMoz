@@ -27,8 +27,8 @@ local TEXTURE_TOP = "rbxassetid://9359126646"
 local TEXTURE_SIDES = "rbxassetid://9359126646"
 local TEXTURE_BOTTOM = "rbxassetid://9359126646"
 
-local PLACE_SOUND_ID = "rbxassetid://8394333801"
-local DELETE_SOUND_ID = "rbxassetid://8394333801"
+local PLACE_SOUND_ID = "rbxassetid://177172187"
+local DELETE_SOUND_ID = "rbxassetid://177172187"
 
 -- GLOBALS --
 local lastPlaced = 0
