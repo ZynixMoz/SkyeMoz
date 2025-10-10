@@ -1,0 +1,46 @@
+-- RetroDream Shader (Client-Side)
+-- by Zynix
+
+local Players = game:GetService("Players")
+local Lighting = game:GetService("Lighting")
+
+local player = Players.LocalPlayer
+
+-- Create shader effects
+local colorCorrection = Instance.new("ColorCorrectionEffect")
+colorCorrection.Name = "RetroDreamColorCorrection"
+colorCorrection.Parent = Lighting
+colorCorrection.Saturation = -0.2        -- slightly desaturate
+colorCorrection.Contrast = 0.1           -- mild contrast
+colorCorrection.TintColor = Color3.fromRGB(255, 230, 200) -- warm tone
+
+local bloom = Instance.new("BloomEffect")
+bloom.Name = "RetroDreamBloom"
+bloom.Parent = Lighting
+bloom.Intensity = 0.3
+bloom.Threshold = 0.8
+bloom.Size = 24
+
+local blur = Instance.new("BlurEffect")
+blur.Name = "RetroDreamBlur"
+blur.Parent = Lighting
+blur.Size = 2 -- soft blur for nostalgia feel
+
+local sunRays = Instance.new("SunRaysEffect")
+sunRays.Name = "RetroDreamSunRays"
+sunRays.Parent = Lighting
+sunRays.Intensity = 0.05
+sunRays.Spread = 1.5
+
+-- Optional vignette effect (not built-in, needs UI overlay)
+local vignette = Instance.new("ImageLabel")
+vignette.Name = "RetroDreamVignette"
+vignette.Size = UDim2.new(1,0,1,0)
+vignette.Position = UDim2.new(0,0,0,0)
+vignette.BackgroundTransparency = 1
+vignette.Image = "rbxassetid://INSERT_VIGNETTE_IMAGE_ID" -- add your vignette texture here
+vignette.ImageTransparency = 0.5
+vignette.ZIndex = 10
+vignette.Parent = player:WaitForChild("PlayerGui"):WaitForChild("ScreenGui") or Instance.new("ScreenGui", player.PlayerGui)
+
+print("RetroDream shader applied ✔")
