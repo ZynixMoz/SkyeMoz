@@ -1,97 +1,92 @@
---[[
-    CrosshairM System - Extended
-    Features:
-    - Dynamic color change on aiming
-    - Optional dot or circle style
-    - Adjustable gap and thickness
-    - Smooth fade in/out
-]]
+-- // White Minecraft-style "+" crosshair with first/third person transparency
 
--- Additional settings
-settings.style = "plus"       -- "plus", "dot", or "circle"
-settings.gap = 5              -- Gap between lines (if style is plus)
-settings.thickness = 2        -- Thickness of lines
-settings.dynamicColor = true  -- Change color on targeting
-settings.targetColor = Color3.fromRGB(255, 0, 0) -- Color when hovering over target
-settings.fadeSpeed = 0.1      -- Smooth fade in/out
+local settings = {
+    color = Color3.fromRGB(255, 255, 255),
+    thickness = 2,
+    length = 8,
+    opacity = 1,        -- fully visible in first person
+    thirdPersonOpacity = 0.5, -- opacity in third person
+    x_offset = 0,
+    y_offset = 0,
+    recenter = true
+}
 
--- Optional: Drawing shapes for plus crosshair
-local crosshairParts = {}
+local cam = workspace.CurrentCamera or workspace:FindFirstChildOfClass("Camera")
+local player = game:GetService("Players").LocalPlayer
 
-if settings.style == "plus" then
-    local function createLine()
-        local line = Drawing.new("Line")
-        line.Color = settings.color
-        line.Thickness = settings.thickness
-        line.Visible = true
-        return line
+getgenv().crosshair_x = getgenv().crosshair_x or {}
+getgenv().crosshair_y = getgenv().crosshair_y or {}
+
+local function draw(a1, a2)
+    local obj = Drawing.new(a1)
+    for i, v in pairs(a2) do 
+        obj[i] = v
     end
-
-    -- Create 4 lines: up, down, left, right
-    crosshairParts.up = createLine()
-    crosshairParts.down = createLine()
-    crosshairParts.left = createLine()
-    crosshairParts.right = createLine()
+    return obj
 end
 
--- Function to update plus crosshair position
-local function updatePlusCrosshair()
-    local cx = cam.ViewportSize.X / 2 + settings.x_offset
-    local cy = cam.ViewportSize.Y / 2 + settings.y_offset
-    local gap = settings.gap
-
-    if settings.style == "plus" then
-        crosshairParts.up.From = Vector2.new(cx, cy - gap)
-        crosshairParts.up.To = Vector2.new(cx, cy - gap - settings.size)
-        
-        crosshairParts.down.From = Vector2.new(cx, cy + gap)
-        crosshairParts.down.To = Vector2.new(cx, cy + gap + settings.size)
-        
-        crosshairParts.left.From = Vector2.new(cx - gap, cy)
-        crosshairParts.left.To = Vector2.new(cx - gap - settings.size, cy)
-        
-        crosshairParts.right.From = Vector2.new(cx + gap, cy)
-        crosshairParts.right.To = Vector2.new(cx + gap + settings.size, cy)
+-- Clear previous crosshair
+for _, tbl in pairs({getgenv().crosshair_x, getgenv().crosshair_y}) do
+    if tbl["Line"] then
+        tbl["Line"]:Remove()
+    end
+    if tbl["Connection"] then
+        tbl["Connection"]:Disconnect()
     end
 end
 
--- Optional: Dynamic color on targeting
-local function updateColor()
-    if settings.dynamicColor then
-        local mouse = player:GetMouse()
-        local target = mouse.Target
-        local newColor = target and settings.targetColor or settings.color
+getgenv().crosshair_x = {}
+getgenv().crosshair_y = {}
 
-        if settings.style == "plus" then
-            for _, line in pairs(crosshairParts) do
-                line.Color = newColor
-            end
-        else
-            crosshair.Color = newColor
-        end
+-- Horizontal line
+getgenv().crosshair_x["Line"] = draw("Line", {
+    To = Vector2.new(((cam.ViewportSize.X / 2) - settings.x_offset) - settings.length, (cam.ViewportSize.Y / 2) - settings.y_offset),
+    From = Vector2.new(((cam.ViewportSize.X / 2) - settings.x_offset) + settings.length, (cam.ViewportSize.Y / 2) - settings.y_offset),
+    Thickness = settings.thickness,
+    Color = settings.color,
+    Transparency = settings.opacity,
+    Visible = true
+})
+
+-- Vertical line
+getgenv().crosshair_y["Line"] = draw("Line", {
+    To = Vector2.new((cam.ViewportSize.X / 2) - settings.x_offset, ((cam.ViewportSize.Y / 2) - settings.y_offset) - settings.length),
+    From = Vector2.new((cam.ViewportSize.X / 2) - settings.x_offset, ((cam.ViewportSize.Y / 2) - settings.y_offset) + settings.length),
+    Thickness = settings.thickness,
+    Color = settings.color,
+    Transparency = settings.opacity,
+    Visible = true
+})
+
+-- Update function for recenter & first/third person transparency
+local function updateCrosshair()
+    local x = cam.ViewportSize.X / 2 - settings.x_offset
+    local y = cam.ViewportSize.Y / 2 - settings.y_offset
+
+    local transparency = settings.opacity
+    if player.CameraMode == Enum.CameraMode.Classic then
+        transparency = settings.thirdPersonOpacity
     end
+
+    -- horizontal line
+    getgenv().crosshair_x["Line"].To = Vector2.new(x - settings.length, y)
+    getgenv().crosshair_x["Line"].From = Vector2.new(x + settings.length, y)
+    getgenv().crosshair_x["Line"].Transparency = transparency
+
+    -- vertical line
+    getgenv().crosshair_y["Line"].To = Vector2.new(x, y - settings.length)
+    getgenv().crosshair_y["Line"].From = Vector2.new(x, y + settings.length)
+    getgenv().crosshair_y["Line"].Transparency = transparency
 end
 
--- Render update
-RunService.RenderStepped:Connect(function()
-    if settings.style == "plus" then
-        updatePlusCrosshair()
-    else
-        updateCrosshair()
-    end
-    updateColor()
-end)
-
--- Cleanup for extended crosshair
-local function extendedCleanup()
-    if settings.style == "plus" then
-        for _, part in pairs(crosshairParts) do
-            part:Remove()
-        end
-    else
-        crosshair:Remove()
-    end
+-- Connect updates
+if settings.recenter then
+    getgenv().crosshair_x["Connection"] = cam:GetPropertyChangedSignal("ViewportSize"):Connect(updateCrosshair)
+    getgenv().crosshair_y["Connection"] = cam:GetPropertyChangedSignal("ViewportSize"):Connect(updateCrosshair)
 end
 
-table.insert(settings, player.CharacterRemoving:Connect(extendedCleanup))
-table.insert(settings, game:BindToClose(extendedCleanup))
+-- Update every frame for camera mode change
+game:GetService("RunService").RenderStepped:Connect(updateCrosshair)
+
+-- Initial update
+updateCrosshair()
