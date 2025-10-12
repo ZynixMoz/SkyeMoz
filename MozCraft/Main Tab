@@ -138,6 +138,15 @@ local Button = Tab:CreateButton({
        loadstring(game:HttpGet("https://raw.githubusercontent.com/ZynixMoz/SkyeMoz/refs/heads/main/Minecraft/Blocks/Planks/Warped"))()
    end,
 })
+local Divider = Tab:CreateDivider()
+Section:Set("Glass Blocks")
+local Button = Tab:CreateButton({
+   Name = "Acacia",
+   Callback = function()
+       PlayClick() 
+       loadstring(game:HttpGet("https://raw.githubusercontent.com/ZynixMoz/SkyeMoz/refs/heads/main/Minecraft/Blocks/Construction/glasses/Clear"))()
+   end,
+})
 
 local Tab = Window:CreateTab("Equipments", 17287512985) 
 Section:Set("Weapons")
@@ -201,5 +210,12 @@ local Button = Tab:CreateButton({
    Callback = function()
        PlayClick() 
        loadstring(game:HttpGet("https://raw.githubusercontent.com/ZynixMoz/SkyeMoz/refs/heads/main/Minecraft/Add%20one/Rotate"))()
+   end,
+})
+local Button = Tab:CreateButton({
+   Name = "Snowy Grass",
+   Callback = function()
+       PlayClick() 
+       loadstring(game:HttpGet("https://raw.githubusercontent.com/ZynixMoz/SkyeMoz/refs/heads/main/Minecraft/Blocks/Nature/Snow%20Grass"))()
    end,
 })
