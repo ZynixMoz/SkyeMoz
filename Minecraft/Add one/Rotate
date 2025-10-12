@@ -1,11 +1,12 @@
 -- RotateTool Client-Side LocalScript
--- Circular gradient buttons (Red, Blue, Yellow), click/hold scale, click sound
+-- Rotates parts in center screen by fixed increments
 -- Tool image: 9559111831 | Click sound: 6496157434
 
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
 local player = Players.LocalPlayer
-local mouse = player:GetMouse()
+local cam = workspace.CurrentCamera
 
 -- TOOL
 local tool = Instance.new("Tool")
@@ -24,7 +25,7 @@ clickSound.Parent = tool
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "RotateGUI"
 screenGui.ResetOnSpawn = false
-screenGui.Enabled = false -- hidden by default
+screenGui.Enabled = false
 screenGui.Parent = player:WaitForChild("PlayerGui")
 
 -- BUTTON DATA
@@ -33,6 +34,21 @@ local buttonsData = {
     {Name = "Y", Axis = "Y", ColorStart = Color3.fromRGB(0,80,255), ColorEnd = Color3.fromRGB(0,150,255)},
     {Name = "Z", Axis = "Z", ColorStart = Color3.fromRGB(255,180,0), ColorEnd = Color3.fromRGB(255,220,0)},
 }
+
+-- ROTATE FUNCTION
+local function rotatePart(part, axis)
+    if not part or not part:IsA("BasePart") then return end
+    part.CFrame = part.CFrame * (axis == "X" and CFrame.Angles(math.rad(15),0,0)
+        or axis == "Y" and CFrame.Angles(0,math.rad(15),0)
+        or axis == "Z" and CFrame.Angles(0,0,math.rad(15)))
+end
+
+-- Get part in center of screen
+local function getCenterPart()
+    local ray = Ray.new(cam.CFrame.Position, cam.CFrame.LookVector * 1000)
+    local part, pos = workspace:FindPartOnRay(ray, player.Character, false, true)
+    return part
+end
 
 -- Create buttons
 local buttons = {}
@@ -65,31 +81,37 @@ for i,data in ipairs(buttonsData) do
     local tweenUp = TweenService:Create(btn, TweenInfo.new(0.1, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {Size=UDim2.new(0,60,0,60)})
     local tweenDown = TweenService:Create(btn, TweenInfo.new(0.1, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {Size=UDim2.new(0,50,0,50)})
 
+    -- Continuous hold rotation
+    local holdConnection
     btn.MouseButton1Down:Connect(function()
         isHolding = true
         tweenUp:Play()
         clickSound:Play()
-        local target = mouse.Target
-        if target and target:IsA("BasePart") then
-            if data.Axis == "X" then
-                target.CFrame = target.CFrame * CFrame.Angles(math.rad(15),0,0)
-            elseif data.Axis == "Y" then
-                target.CFrame = target.CFrame * CFrame.Angles(0,math.rad(15),0)
-            elseif data.Axis == "Z" then
-                target.CFrame = target.CFrame * CFrame.Angles(0,0,math.rad(15))
-            end
-        end
+
+        holdConnection = RunService.RenderStepped:Connect(function()
+            if not isHolding then return end
+            local target = getCenterPart()
+            rotatePart(target, data.Axis)
+        end)
     end)
 
     btn.MouseButton1Up:Connect(function()
         isHolding = false
         tweenDown:Play()
+        if holdConnection then
+            holdConnection:Disconnect()
+            holdConnection = nil
+        end
     end)
 
     btn.MouseLeave:Connect(function()
         if isHolding then
             isHolding = false
             tweenDown:Play()
+            if holdConnection then
+                holdConnection:Disconnect()
+                holdConnection = nil
+            end
         end
     end)
 end
