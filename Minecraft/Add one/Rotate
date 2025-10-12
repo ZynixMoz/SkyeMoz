@@ -1,0 +1,104 @@
+-- RotateTool Client-Side LocalScript
+-- Circular gradient buttons (Red, Blue, Yellow), click/hold scale, click sound
+-- Tool image: 9559111831 | Click sound: 6496157434
+
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local player = Players.LocalPlayer
+local mouse = player:GetMouse()
+
+-- TOOL
+local tool = Instance.new("Tool")
+tool.Name = "RotateTool"
+tool.TextureId = "rbxassetid://9559111831"
+tool.RequiresHandle = false
+tool.Parent = player.Backpack
+
+-- CLICK SOUND
+local clickSound = Instance.new("Sound")
+clickSound.SoundId = "rbxassetid://6496157434"
+clickSound.Volume = 1
+clickSound.Parent = tool
+
+-- GUI
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "RotateGUI"
+screenGui.ResetOnSpawn = false
+screenGui.Enabled = false -- hidden by default
+screenGui.Parent = player:WaitForChild("PlayerGui")
+
+-- BUTTON DATA
+local buttonsData = {
+    {Name = "X", Axis = "X", ColorStart = Color3.fromRGB(180,0,0), ColorEnd = Color3.fromRGB(255,0,0)},
+    {Name = "Y", Axis = "Y", ColorStart = Color3.fromRGB(0,80,255), ColorEnd = Color3.fromRGB(0,150,255)},
+    {Name = "Z", Axis = "Z", ColorStart = Color3.fromRGB(255,180,0), ColorEnd = Color3.fromRGB(255,220,0)},
+}
+
+-- Create buttons
+local buttons = {}
+local yStart = 50
+local ySpacing = 70
+for i,data in ipairs(buttonsData) do
+    local btn = Instance.new("TextButton")
+    btn.Name = data.Name
+    btn.Size = UDim2.new(0, 50, 0, 50)
+    btn.Position = UDim2.new(0, 20, 0, yStart + (i-1)*ySpacing)
+    btn.BackgroundTransparency = 0.4
+    btn.Text = data.Name
+    btn.TextColor3 = Color3.new(1,1,1)
+    btn.Font = Enum.Font.FredokaOne
+    btn.TextScaled = true
+    btn.BorderSizePixel = 0
+    btn.AutoButtonColor = false
+    btn.Parent = screenGui
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(1,0)
+    corner.Parent = btn
+
+    local gradient = Instance.new("UIGradient")
+    gradient.Color = ColorSequence.new({ColorSequenceKeypoint.new(0, data.ColorStart), ColorSequenceKeypoint.new(1, data.ColorEnd)})
+    gradient.Rotation = 90
+    gradient.Parent = btn
+
+    local isHolding = false
+    local tweenUp = TweenService:Create(btn, TweenInfo.new(0.1, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {Size=UDim2.new(0,60,0,60)})
+    local tweenDown = TweenService:Create(btn, TweenInfo.new(0.1, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {Size=UDim2.new(0,50,0,50)})
+
+    btn.MouseButton1Down:Connect(function()
+        isHolding = true
+        tweenUp:Play()
+        clickSound:Play()
+        local target = mouse.Target
+        if target and target:IsA("BasePart") then
+            if data.Axis == "X" then
+                target.CFrame = target.CFrame * CFrame.Angles(math.rad(15),0,0)
+            elseif data.Axis == "Y" then
+                target.CFrame = target.CFrame * CFrame.Angles(0,math.rad(15),0)
+            elseif data.Axis == "Z" then
+                target.CFrame = target.CFrame * CFrame.Angles(0,0,math.rad(15))
+            end
+        end
+    end)
+
+    btn.MouseButton1Up:Connect(function()
+        isHolding = false
+        tweenDown:Play()
+    end)
+
+    btn.MouseLeave:Connect(function()
+        if isHolding then
+            isHolding = false
+            tweenDown:Play()
+        end
+    end)
+end
+
+-- EQUIP / UNEQUIP
+tool.Equipped:Connect(function()
+    screenGui.Enabled = true
+end)
+
+tool.Unequipped:Connect(function()
+    screenGui.Enabled = false
+end)
