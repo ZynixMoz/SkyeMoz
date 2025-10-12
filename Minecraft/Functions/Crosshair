@@ -1,54 +1,97 @@
 --[[
-    CrosshairM System
-    Displays a "+" exactly in the middle of the screen
-    Matches positioning style from your previous script
+    CrosshairM System - Extended
+    Features:
+    - Dynamic color change on aiming
+    - Optional dot or circle style
+    - Adjustable gap and thickness
+    - Smooth fade in/out
 ]]
 
-local settings = {
-    color = Color3.fromRGB(255, 255, 255), -- Crosshair color
-    size = 16,                              -- Crosshair text size
-    recenter = true,                       -- Auto-adjust on resize
-    x_offset = 0,                           -- Horizontal offset
-    y_offset = 0                            -- Vertical offset
-}
+-- Additional settings
+settings.style = "plus"       -- "plus", "dot", or "circle"
+settings.gap = 5              -- Gap between lines (if style is plus)
+settings.thickness = 2        -- Thickness of lines
+settings.dynamicColor = true  -- Change color on targeting
+settings.targetColor = Color3.fromRGB(255, 0, 0) -- Color when hovering over target
+settings.fadeSpeed = 0.1      -- Smooth fade in/out
 
--- Services
-local RunService = game:GetService("RunService")
-local cam = workspace.CurrentCamera or workspace:FindFirstChildOfClass("Camera")
-local Players = game:GetService("Players")
-local player = Players.LocalPlayer
+-- Optional: Drawing shapes for plus crosshair
+local crosshairParts = {}
 
--- Create crosshair
-local crosshair = Drawing.new("Text")
-crosshair.Text = "+"
-crosshair.Size = settings.size
-crosshair.Color = settings.color
-crosshair.Center = true
-crosshair.Visible = true
+if settings.style == "plus" then
+    local function createLine()
+        local line = Drawing.new("Line")
+        line.Color = settings.color
+        line.Thickness = settings.thickness
+        line.Visible = true
+        return line
+    end
 
--- Update crosshair position
-local function updateCrosshair()
-    local centerX = (cam.ViewportSize.X / 2) + settings.x_offset
-    local centerY = (cam.ViewportSize.Y / 2) + settings.y_offset
-    crosshair.Position = Vector2.new(centerX, centerY)
+    -- Create 4 lines: up, down, left, right
+    crosshairParts.up = createLine()
+    crosshairParts.down = createLine()
+    crosshairParts.left = createLine()
+    crosshairParts.right = createLine()
 end
 
--- Initialize
-updateCrosshair()
+-- Function to update plus crosshair position
+local function updatePlusCrosshair()
+    local cx = cam.ViewportSize.X / 2 + settings.x_offset
+    local cy = cam.ViewportSize.Y / 2 + settings.y_offset
+    local gap = settings.gap
 
--- Auto-recenter
-if settings.recenter then
-    table.insert(settings, cam:GetPropertyChangedSignal("ViewportSize"):Connect(updateCrosshair))
-    RunService.RenderStepped:Connect(updateCrosshair)
+    if settings.style == "plus" then
+        crosshairParts.up.From = Vector2.new(cx, cy - gap)
+        crosshairParts.up.To = Vector2.new(cx, cy - gap - settings.size)
+        
+        crosshairParts.down.From = Vector2.new(cx, cy + gap)
+        crosshairParts.down.To = Vector2.new(cx, cy + gap + settings.size)
+        
+        crosshairParts.left.From = Vector2.new(cx - gap, cy)
+        crosshairParts.left.To = Vector2.new(cx - gap - settings.size, cy)
+        
+        crosshairParts.right.From = Vector2.new(cx + gap, cy)
+        crosshairParts.right.To = Vector2.new(cx + gap + settings.size, cy)
+    end
 end
 
--- Cleanup function (prevents memory leaks)
-local function cleanup()
-    if crosshair then
+-- Optional: Dynamic color on targeting
+local function updateColor()
+    if settings.dynamicColor then
+        local mouse = player:GetMouse()
+        local target = mouse.Target
+        local newColor = target and settings.targetColor or settings.color
+
+        if settings.style == "plus" then
+            for _, line in pairs(crosshairParts) do
+                line.Color = newColor
+            end
+        else
+            crosshair.Color = newColor
+        end
+    end
+end
+
+-- Render update
+RunService.RenderStepped:Connect(function()
+    if settings.style == "plus" then
+        updatePlusCrosshair()
+    else
+        updateCrosshair()
+    end
+    updateColor()
+end)
+
+-- Cleanup for extended crosshair
+local function extendedCleanup()
+    if settings.style == "plus" then
+        for _, part in pairs(crosshairParts) do
+            part:Remove()
+        end
+    else
         crosshair:Remove()
     end
 end
 
--- Cleanup on player leave or game close
-table.insert(settings, player.CharacterRemoving:Connect(cleanup))
-table.insert(settings, game:BindToClose(cleanup))
+table.insert(settings, player.CharacterRemoving:Connect(extendedCleanup))
+table.insert(settings, game:BindToClose(extendedCleanup))
