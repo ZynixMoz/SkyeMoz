@@ -141,7 +141,7 @@ local Button = Tab:CreateButton({
 local Divider = Tab:CreateDivider()
 Section:Set("Glass Blocks")
 local Button = Tab:CreateButton({
-   Name = "Acacia",
+   Name = "Glass Block",
    Callback = function()
        PlayClick() 
        loadstring(game:HttpGet("https://raw.githubusercontent.com/ZynixMoz/SkyeMoz/refs/heads/main/Minecraft/Blocks/Construction/glasses/Clear"))()
@@ -193,6 +193,12 @@ local Button = Tab:CreateButton({
        PlayClick() 
        loadstring(game:HttpGet("https://raw.githubusercontent.com/ZynixMoz/SkyeMoz/refs/heads/main/Minecraft/Blocks/Nature/Stone%20Block"))()
    end,
+   local Button = Tab:CreateButton({
+   Name = "Snowy Grass",
+   Callback = function()
+       PlayClick() 
+       loadstring(game:HttpGet("https://raw.githubusercontent.com/ZynixMoz/SkyeMoz/refs/heads/main/Minecraft/Blocks/Nature/Snow%20Grass"))()
+   end,
 })
 local Tab = Window:CreateTab("Settings", 18158239053) 
 local Button = Tab:CreateButton({
@@ -210,12 +216,5 @@ local Button = Tab:CreateButton({
    Callback = function()
        PlayClick() 
        loadstring(game:HttpGet("https://raw.githubusercontent.com/ZynixMoz/SkyeMoz/refs/heads/main/Minecraft/Add%20one/Rotate"))()
-   end,
-})
-local Button = Tab:CreateButton({
-   Name = "Snowy Grass",
-   Callback = function()
-       PlayClick() 
-       loadstring(game:HttpGet("https://raw.githubusercontent.com/ZynixMoz/SkyeMoz/refs/heads/main/Minecraft/Blocks/Nature/Snow%20Grass"))()
    end,
 })
