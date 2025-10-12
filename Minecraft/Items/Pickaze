@@ -9,7 +9,7 @@ local tool = Instance.new("Tool")
 tool.Name = "Pickaxe"
 tool.RequiresHandle = true
 tool.CanBeDropped = false
-tool.TextureId = "rbxassetid://16958107171"
+tool.TextureId = "rbxassetid://90297495789346"
 tool.Parent = player.Backpack
 
 -- Create handle
@@ -24,8 +24,8 @@ handle.Parent = tool
 -- Add mesh
 local mesh = Instance.new("SpecialMesh")
 mesh.MeshType = Enum.MeshType.FileMesh
-mesh.MeshId = "rbxassetid://17288777563"
-mesh.TextureId = "rbxassetid://17288777518"
+mesh.MeshId = "rbxassetid://15194774703"
+mesh.TextureId = "rbxassetid://8827665405"
 mesh.Scale = Vector3.new(0.5, 0.5, 0.5)
 mesh.Parent = handle
 
