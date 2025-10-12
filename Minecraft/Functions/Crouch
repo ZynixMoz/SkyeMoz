@@ -1,87 +1,109 @@
 local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-
+local TweenService = game:GetService("TweenService")
 local player = Players.LocalPlayer
-local playerGui = player:WaitForChild("PlayerGui")
-
-local character = player.Character or player.CharacterAdded:Wait()
-local humanoid = character:WaitForChild("Humanoid")
-local rootPart = character:WaitForChild("HumanoidRootPart")
 
 -- SETTINGS
-local CROUCH_HIP_OFFSET = -1
+local CROUCH_HIP_OFFSET = -0.5 -- small crouch
 local CROUCH_WALK_SPEED = 7
-local NORMAL_WALK_SPEED = humanoid.WalkSpeed
-local WAIST_BEND_ANGLE = -25
-local NECK_COMPENSATE_ANGLE = 15
+local WAIST_BEND_ANGLE = -5 -- subtle bend
+local NECK_COMPENSATE_ANGLE = 5
+local TWEEN_TIME = 0.25 -- smooth duration
 
 local crouchToggle = false
 
--- UI
-local screenGui = Instance.new("ScreenGui", playerGui)
-screenGui.Name = "CrouchUI"
+-- FUNCTION TO CREATE GUI
+local function createCrouchGUI(playerGui)
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "CrouchUI"
+    screenGui.ResetOnSpawn = false
 
-local crouchButton = Instance.new("ImageButton", screenGui)
-crouchButton.Size = UDim2.new(0, 66, 0, 66)
-crouchButton.Position = UDim2.new(0.9, -150, 0.9, -60)
-crouchButton.BackgroundColor3 = Color3.fromRGB(0,0,0)
-crouchButton.BackgroundTransparency = 0.3
-crouchButton.BorderSizePixel = 0
-crouchButton.Image = "rbxassetid://18256199240"
+    local crouchButton = Instance.new("ImageButton")
+    crouchButton.Parent = screenGui
+    crouchButton.Size = UDim2.new(0, 66, 0, 66)
+    crouchButton.Position = UDim2.new(0.85, 0, 0.5, 0)
+    crouchButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    crouchButton.BackgroundTransparency = 0.3
+    crouchButton.BorderSizePixel = 0
+    crouchButton.Image = "rbxassetid://18256199240"
 
-local circle = Instance.new("UICorner", crouchButton)
-circle.CornerRadius = UDim.new(0.5, 0)
+    local circle = Instance.new("UICorner")
+    circle.Parent = crouchButton
+    circle.CornerRadius = UDim.new(0.5, 0)
+
+    screenGui.Parent = playerGui
+    return crouchButton
+end
 
 -- JOINTS
 local waistMotor, neckMotor, origWaistC0, origNeckC0
-local function setupJoints()
-	for _, v in ipairs(character:GetDescendants()) do
-		if v:IsA("Motor6D") then
-			if v.Name == "Waist" then
-				waistMotor = v
-				origWaistC0 = v.C0
-			elseif v.Name == "Neck" then
-				neckMotor = v
-				origNeckC0 = v.C0
-			end
-		end
-	end
+local function setupJoints(character)
+    for _, v in ipairs(character:GetDescendants()) do
+        if v:IsA("Motor6D") then
+            if v.Name == "Waist" then
+                waistMotor = v
+                origWaistC0 = v.C0
+            elseif v.Name == "Neck" then
+                neckMotor = v
+                origNeckC0 = v.C0
+            end
+        end
+    end
 end
-setupJoints()
+
+-- TWEEN FUNCTION
+local function tweenCFrame(motor, targetC0)
+    if motor then
+        local tween = TweenService:Create(motor, TweenInfo.new(TWEEN_TIME, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {C0 = targetC0})
+        tween:Play()
+    end
+end
 
 -- CROUCH / UNCROUCH
-local function crouch()
-	humanoid.HipHeight = humanoid.HipHeight + CROUCH_HIP_OFFSET
-	humanoid.WalkSpeed = CROUCH_WALK_SPEED
-	if waistMotor then waistMotor.C0 = origWaistC0 * CFrame.Angles(math.rad(WAIST_BEND_ANGLE),0,0) end
-	if neckMotor then neckMotor.C0 = origNeckC0 * CFrame.Angles(math.rad(NECK_COMPENSATE_ANGLE),0,0) end
+local function crouch(humanoid)
+    humanoid.HipHeight = humanoid.HipHeight + CROUCH_HIP_OFFSET
+    humanoid.WalkSpeed = CROUCH_WALK_SPEED
+
+    if waistMotor then
+        tweenCFrame(waistMotor, origWaistC0 * CFrame.Angles(math.rad(WAIST_BEND_ANGLE), 0, 0))
+    end
+    if neckMotor then
+        tweenCFrame(neckMotor, origNeckC0 * CFrame.Angles(math.rad(NECK_COMPENSATE_ANGLE), 0, 0))
+    end
 end
 
-local function uncrouch()
-	humanoid.HipHeight = humanoid.HipHeight - CROUCH_HIP_OFFSET
-	humanoid.WalkSpeed = NORMAL_WALK_SPEED
-	if waistMotor then waistMotor.C0 = origWaistC0 end
-	if neckMotor then neckMotor.C0 = origNeckC0 end
+local function uncrouch(humanoid)
+    humanoid.HipHeight = humanoid.HipHeight - CROUCH_HIP_OFFSET
+    humanoid.WalkSpeed = 16
+
+    tweenCFrame(waistMotor, origWaistC0)
+    tweenCFrame(neckMotor, origNeckC0)
 end
 
--- BUTTON TOGGLE
-crouchButton.MouseButton1Click:Connect(function()
-	crouchToggle = not crouchToggle
-	if crouchToggle then
-		crouchButton.BackgroundColor3 = Color3.fromRGB(30,30,30)
-		crouch()
-	else
-		crouchButton.BackgroundColor3 = Color3.fromRGB(50,50,50)
-		uncrouch()
-	end
-end)
+-- SETUP CHARACTER
+local function onCharacterAdded(character)
+    local humanoid = character:WaitForChild("Humanoid")
+    setupJoints(character)
 
--- RESPAWN HANDLING
-player.CharacterAdded:Connect(function(char)
-	character = char
-	humanoid = char:WaitForChild("Humanoid")
-	rootPart = char:WaitForChild("HumanoidRootPart")
-	NORMAL_WALK_SPEED = humanoid.WalkSpeed
-	setupJoints()
-	if crouchToggle then crouch() end
-end)
+    local playerGui = player:WaitForChild("PlayerGui")
+    local crouchButton = createCrouchGUI(playerGui)
+
+    crouchButton.MouseButton1Click:Connect(function()
+        crouchToggle = not crouchToggle
+        if crouchToggle then
+            crouchButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+            crouch(humanoid)
+        else
+            crouchButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+            uncrouch(humanoid)
+        end
+    end)
+
+    if crouchToggle then
+        crouch(humanoid)
+    end
+end
+
+player.CharacterAdded:Connect(onCharacterAdded)
+if player.Character then
+    onCharacterAdded(player.Character)
+end
