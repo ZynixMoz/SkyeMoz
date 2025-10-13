@@ -9,9 +9,10 @@ function PlayClick()
     ClickSound:Play()
 end
 
+-- Create Window
 local Window = Rayfield:CreateWindow({
     Name = "MozCraft",
-    Icon = 95704992992208,
+    Icon = 95704992992208, 
     LoadingTitle = "MozCraft: RoScript",
     LoadingSubtitle = "SzR Studio",
     ShowText = "Creative",
@@ -19,89 +20,199 @@ local Window = Rayfield:CreateWindow({
     ToggleUIKeybind = "Z",
     DisableRayfieldPrompts = false,
     DisableBuildWarnings = false,
-    ConfigurationSaving = {Enabled = true, FolderName = nil, FileName = "Hub"},
-    Discord = {Enabled = true, Invite = "hJDraXq5ks", RememberJoins = true},
-    KeySystem = false
+
+    ConfigurationSaving = {
+        Enabled = true,
+        FolderName = nil, 
+        FileName = "Hub"
+    },
+
+    Discord = {
+        Enabled = true, 
+        Invite = "hJDraXq5ks",
+        RememberJoins = true
+    },
+
+    KeySystem = false,  
+    KeySettings = {
+        Title = "MozCraft ",
+        Subtitle = "Key System",
+        Note = "No method of obtaining the key is provided",
+        FileName = "Key",
+        SaveKey = true,
+        GrabKeyFromSite = false,
+        Key = {"Key_41414"}  
+    }
 })
 
 -- Info Tab
-local InfoTab = Window:CreateTab("Info", 14563650667)
-InfoTab:CreateButton({
-    Name = "Discord",
-    Callback = function()
-        PlayClick()
-        setclipboard("https://discord.gg/hJDraXq5ks")
-        Rayfield:Notify({Title = "Discord Invitation", Content = "Copied!", Duration = 2})
-    end,
+local Tab = Window:CreateTab("Info", 14563650667)
+
+--Info Buttons
+local Button = Tab:CreateButton({
+   Name = "Discord",
+   Callback = function()
+     PlayClick() 
+     setclipboard("https://discord.gg/hJDraXq5ks") 
+     Rayfield:Notify({Title = "Discord Invitation", Content = "Copied! ", Duration = 2})
+   end,
 })
-InfoTab:CreateParagraph({Title = "Updates & Announcements 📰", Content = "No Bug & Fixes Found."})
+local Paragraph = Tab:CreateParagraph({Title = "Updates & Announcements", Content = "No Bug & Fixes Found. "})
 
--- Construction Tab
-local ConstructionTab = Window:CreateTab("Construction", 88202572338513)
-local function CreateButton(Name, URL)
-    ConstructionTab:CreateButton({
-        Name = Name,
-        Callback = function()
-            PlayClick()
-            loadstring(game:HttpGet(URL))()
-        end,
-    })
-end
+--Construction Tab
+local Tab = Window:CreateTab("Construction", 88202572338513)
 
--- Planks
-CreateButton("Oak Planks","https://raw.githubusercontent.com/ZynixMoz/SkyeMoz/refs/heads/main/Minecraft/Blocks/Planks/Oak")
-CreateButton("Dark Planks","https://raw.githubusercontent.com/ZynixMoz/SkyeMoz/refs/heads/main/Minecraft/Blocks/Planks/Dark")
-CreateButton("Jungle Planks","https://raw.githubusercontent.com/ZynixMoz/SkyeMoz/refs/heads/main/Minecraft/Blocks/Planks/Jungle")
-CreateButton("Acacia Planks","https://raw.githubusercontent.com/ZynixMoz/SkyeMoz/refs/heads/main/Minecraft/Blocks/Planks/Acacia")
-CreateButton("Cherry Planks","https://raw.githubusercontent.com/ZynixMoz/SkyeMoz/refs/heads/main/Minecraft/Blocks/Planks/Cherry")
-CreateButton("Birch Planks","https://raw.githubusercontent.com/ZynixMoz/SkyeMoz/refs/heads/main/Minecraft/Blocks/Planks/Birch")
-CreateButton("Bamboo Planks","https://raw.githubusercontent.com/ZynixMoz/SkyeMoz/refs/heads/main/Minecraft/Blocks/Planks/Bamboo")
-CreateButton("Mangrove Planks","https://raw.githubusercontent.com/ZynixMoz/SkyeMoz/refs/heads/main/Minecraft/Blocks/Planks/Mangrove")
-CreateButton("Crimson Planks","https://raw.githubusercontent.com/ZynixMoz/SkyeMoz/refs/heads/main/Minecraft/Blocks/Planks/Crimson")
-CreateButton("Warped Planks","https://raw.githubusercontent.com/ZynixMoz/SkyeMoz/refs/heads/main/Minecraft/Blocks/Planks/Warped")
+local Section = Tab:CreateSection("Planks")
 
--- Glass
-CreateButton("Glass Block","https://raw.githubusercontent.com/ZynixMoz/SkyeMoz/refs/heads/main/Minecraft/Blocks/Construction/glasses/Clear")
-
--- Equipments Tab
-local EquipTab = Window:CreateTab("Equipments", 17287512985)
-EquipTab:CreateButton({
-    Name = "Pickaxe",
-    Callback = function()
-        PlayClick()
-        loadstring(game:HttpGet("https://raw.githubusercontent.com/ZynixMoz/SkyeMoz/refs/heads/main/Minecraft/Items/Pickaze"))()
-    end,
+local Button = Tab:CreateButton({
+   Name = "Oak Planks",
+   Callback = function()
+       PlayClick() 
+       loadstring(game:HttpGet("https://raw.githubusercontent.com/ZynixMoz/SkyeMoz/refs/heads/main/Minecraft/Blocks/Planks/Oak"))()
+   end,
 })
 
--- Items Tab
-local ItemsTab = Window:CreateTab("Items", 126494981034661)
-ItemsTab:CreateParagraph({Title = "Coming Soon", Content = "New Update"})
-
--- Nature Tab
-local NatureTab = Window:CreateTab("Nature", 100389947609805)
-CreateButton("Grass Block","https://raw.githubusercontent.com/ZynixMoz/SkyeMoz/refs/heads/main/Minecraft/Blocks/Nature/Grass")
-CreateButton("Bedrock","https://raw.githubusercontent.com/ZynixMoz/SkyeMoz/refs/heads/main/Minecraft/Blocks/Nature/Bedrock")
-CreateButton("Dirt Block","https://raw.githubusercontent.com/ZynixMoz/SkyeMoz/refs/heads/main/Minecraft/Blocks/Nature/Dirt")
-CreateButton("Stone Block","https://raw.githubusercontent.com/ZynixMoz/SkyeMoz/refs/heads/main/Minecraft/Blocks/Nature/Stone%20Block")
-CreateButton("Snowy Grass","https://raw.githubusercontent.com/ZynixMoz/SkyeMoz/refs/heads/main/Minecraft/Blocks/Nature/Snow%20Grass")
-
--- Settings Tab
-local SettingsTab = Window:CreateTab("Settings", 18158239053)
-SettingsTab:CreateButton({
-    Name = "Generate Flat World",
-    Callback = function()
-        PlayClick()
-        loadstring(game:HttpGet("https://raw.githubusercontent.com/ZynixMoz/SkyeMoz/refs/heads/main/Minecraft/Functions/Guis/MapGenerator"))()
-    end,
+local Button = Tab:CreateButton({
+   Name = "Dark Planks",
+   Callback = function()
+       PlayClick() 
+       loadstring(game:HttpGet("https://raw.githubusercontent.com/ZynixMoz/SkyeMoz/refs/heads/main/Minecraft/Blocks/Planks/Dark"))()
+   end,
 })
-SettingsTab:CreateParagraph({Title = "Coming Soon", Content = "New Update"})
 
--- Add-ons Tab
-local AddonsTab = Window:CreateTab("Add-ons", 7066555021)
-AddonsTab:CreateButton({
-    Name = "Block Rotator",
-    Callback = function()
-        PlayClick()
-        loadstring(game:HttpGet("https://raw.githubusercontent.com/ZynixMoz/SkyeMoz/refs/heads/main/Minecraft/Add%20one/Rotate"))()
-    end,
+local Button = Tab:CreateButton({
+   Name = "Jungle Planks",
+   Callback = function()
+       PlayClick() 
+       loadstring(game:HttpGet("https://raw.githubusercontent.com/ZynixMoz/SkyeMoz/refs/heads/main/Minecraft/Blocks/Planks/Jungle"))()
+   end,
+})
+
+local Button = Tab:CreateButton({
+   Name = "Acacia Planks",
+   Callback = function()
+       PlayClick() 
+       loadstring(game:HttpGet("https://raw.githubusercontent.com/ZynixMoz/SkyeMoz/refs/heads/main/Minecraft/Blocks/Planks/Acacia"))()
+   end,
+})
+local Button = Tab:CreateButton({
+   Name = "Cherry Planks",
+   Callback = function()
+       PlayClick() 
+       loadstring(game:HttpGet("https://raw.githubusercontent.com/ZynixMoz/SkyeMoz/refs/heads/main/Minecraft/Blocks/Planks/Cherry"))()
+   end,
+})
+local Button = Tab:CreateButton({
+   Name = "Birch Planks",
+   Callback = function()
+       PlayClick() 
+       loadstring(game:HttpGet("https://raw.githubusercontent.com/ZynixMoz/SkyeMoz/refs/heads/main/Minecraft/Blocks/Planks/Birch"))()
+   end,
+})
+local Button = Tab:CreateButton({
+   Name = "Bamboo Planks",
+   Callback = function()
+       PlayClick() 
+       loadstring(game:HttpGet("https://raw.githubusercontent.com/ZynixMoz/SkyeMoz/refs/heads/main/Minecraft/Blocks/Planks/Bamboo"))()
+   end,
+})
+local Button = Tab:CreateButton({
+   Name = "Mangrove Planks",
+   Callback = function()
+       PlayClick() 
+       loadstring(game:HttpGet("https://raw.githubusercontent.com/ZynixMoz/SkyeMoz/refs/heads/main/Minecraft/Blocks/Planks/Mangrove"))()
+   end,
+})
+local Button = Tab:CreateButton({
+   Name = "Crimson Planks",
+   Callback = function()
+       PlayClick() 
+       loadstring(game:HttpGet("https://raw.githubusercontent.com/ZynixMoz/SkyeMoz/refs/heads/main/Minecraft/Blocks/Planks/Crimson"))()
+   end,
+})
+local Button = Tab:CreateButton({
+   Name = "Warped Planks",
+   Callback = function()
+       PlayClick() 
+       loadstring(game:HttpGet("https://raw.githubusercontent.com/ZynixMoz/SkyeMoz/refs/heads/main/Minecraft/Blocks/Planks/Warped"))()
+   end,
+})
+local Divider = Tab:CreateDivider()
+local Section = Tab:CreateSection("Glass Blocks")
+local Button = Tab:CreateButton({
+   Name = "Glass Block",
+   Callback = function()
+       PlayClick() 
+       loadstring(game:HttpGet("https://raw.githubusercontent.com/ZynixMoz/SkyeMoz/refs/heads/main/Minecraft/Blocks/Construction/glasses/Clear"))()
+   end,
+})
+
+local Tab = Window:CreateTab("Equipments", 17287512985) 
+local Section = Tab:CreateSection("Weapons")
+
+local Button = Tab:CreateButton({
+   Name = "Pickaxe",
+   Callback = function()
+       PlayClick() 
+       loadstring(game:HttpGet("https://raw.githubusercontent.com/ZynixMoz/SkyeMoz/refs/heads/main/Minecraft/Items/Pickaze"))()
+   end,
+})
+local Tab = Window:CreateTab("Items", 126494981034661) 
+local Section = Tab:CreateSection("Chest")
+local Paragraph = Tab:CreateParagraph({Title = "Coming Soon", Content = "New Update"})
+
+local Tab = Window:CreateTab("Nature", 100389947609805) 
+local Section = Tab:CreateSection("Ground")
+local Button = Tab:CreateButton({
+   Name = "Grass Block",
+   Callback = function()
+       PlayClick() 
+       loadstring(game:HttpGet("https://raw.githubusercontent.com/ZynixMoz/SkyeMoz/refs/heads/main/Minecraft/Blocks/Nature/Grass"))()
+   end,
+})
+local Button = Tab:CreateButton({
+   Name = "Bedrock",
+   Callback = function()
+       PlayClick() 
+       loadstring(game:HttpGet("https://raw.githubusercontent.com/ZynixMoz/SkyeMoz/refs/heads/main/Minecraft/Blocks/Nature/Bedrock"))()
+   end,
+})
+local Button = Tab:CreateButton({
+   Name = "Dirt Block",
+   Callback = function()
+       PlayClick() 
+       loadstring(game:HttpGet("https://raw.githubusercontent.com/ZynixMoz/SkyeMoz/refs/heads/main/Minecraft/Blocks/Nature/Dirt"))()
+   end,
+})
+local Button = Tab:CreateButton({
+   Name = "Stone Block",
+   Callback = function()
+       PlayClick() 
+       loadstring(game:HttpGet("https://raw.githubusercontent.com/ZynixMoz/SkyeMoz/refs/heads/main/Minecraft/Blocks/Nature/Stone%20Block"))()
+   end
+})
+local Button = Tab:CreateButton({
+   Name = "Snowy Grass",
+   Callback = function()
+       PlayClick() 
+       loadstring(game:HttpGet("https://raw.githubusercontent.com/ZynixMoz/SkyeMoz/refs/heads/main/Minecraft/Blocks/Nature/Snow%20Grass"))()
+   end
+})
+local Tab = Window:CreateTab("Settings", 18158239053) 
+local Button = Tab:CreateButton({
+   Name = "Generate Flat World",
+   Callback = function()
+       PlayClick() 
+       loadstring(game:HttpGet("https://raw.githubusercontent.com/ZynixMoz/SkyeMoz/refs/heads/main/Minecraft/Functions/Guis/MapGenerator"))()
+   end,
+})
+local Paragraph = Tab:CreateParagraph({Title = "Coming Soon", Content = "New Update"})
+
+local Tab = Window:CreateTab("Add-ons", 7066555021) 
+local Button = Tab:CreateButton({
+   Name = "Block Rotator",
+   Callback = function()
+       PlayClick() 
+       loadstring(game:HttpGet("https://raw.githubusercontent.com/ZynixMoz/SkyeMoz/refs/heads/main/Minecraft/Add%20one/Rotate"))()
+   end,
 })
