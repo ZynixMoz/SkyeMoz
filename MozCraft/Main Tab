@@ -29,7 +29,7 @@ local Window = Rayfield:CreateWindow({
 
     Discord = {
         Enabled = true, 
-        Invite = "hJDraXq5ks",
+        Invite = "wKVgf2EDGZ",
         RememberJoins = true
     },
 
@@ -57,7 +57,7 @@ local Button = Tab:CreateButton({
      Rayfield:Notify({Title = "Discord Invitation", Content = "Copied! ", Duration = 2})
    end,
 })
-local Paragraph = Tab:CreateParagraph({Title = "Updates & Announcements", Content = "No Bug & Fixes Found. "})
+local Paragraph = Tab:CreateParagraph({Title = "Updates & Announcements", Content = "MozCraft V2 With full blocks is officially coming soon! and will be Implemented PC Support! Want more infos? Join Our Discord! Thank you for your support! "})
 
 --Construction Tab
 local Tab = Window:CreateTab("Construction", 88202572338513)
