@@ -53,7 +53,7 @@ local Button = Tab:CreateButton({
    Name = "Discord",
    Callback = function()
      PlayClick() 
-     setclipboard("https://discord.gg/hJDraXq5ks") 
+     setclipboard("https://discord.gg/wKVgf2EDGZ") 
      Rayfield:Notify({Title = "Discord Invitation", Content = "Copied! ", Duration = 2})
    end,
 })
